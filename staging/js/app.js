@@ -163,6 +163,8 @@
     const n = (ME.name || '').trim(), w = n.replace(/^SE-\s*/i, '').split(/\s+/).filter(Boolean);
     $('av').textContent = ME.initials || ((w.length > 1 ? w[0][0] + w[w.length - 1][0] : (w[0] || ME.email || '?').slice(0, 2)).toUpperCase());
     $('me-name').textContent = n || 'Signed in'; $('me-email').textContent = ME.email || '';
+    document.querySelector('.nav a[data-nav="team"]').hidden = !ME.role || ME.role === 'Teacher';
+    document.querySelector('.nav a[data-nav="edit"]').hidden = ME.role !== 'L&D';
     route();
   }
 
@@ -330,20 +332,12 @@
     if (sk.length) h += '<div class="box" style="gap:0"><h2 class="lbl" style="margin-bottom:6px">Skills' + (dom ? ' · ' + esc(dom) : '') + '</h2>' +
       sk.map((x) => '<div class="sk"><span class="code">' + esc(x[0]) + '</span><span>' + esc(x[1][0]) + '</span><span class="tag">' + esc(x[1][1]) + '</span></div>').join('') + '</div>';
     else if (m.x) h += '<div class="box"><h2 class="lbl">SETDT coverage</h2><p style="margin:0;font-size:14px;line-height:1.5">' + esc(m.x) + '</p></div>';
+    const foCodes = [...new Set((m.fo || []).concat(...trs.map((t) => t.fo || [])))].filter((c) => (CAT.fo || {})[c]);
+    if (foCodes.length) h += '<div class="box"><h2 class="lbl">Observed in class (FO rubric)</h2>' + foCodes.map((c) => '<div class="sk" style="grid-template-columns:44px 1fr"><span class="code">' + esc(c) + '</span><span>' + esc(CAT.fo[c][2]) + '</span></div>').join('') + '</div>';
     if (m.f || m.m) h += '<div class="box"><h2 class="lbl">Facilitator</h2>' + (m.f ? '<p style="margin:0">' + esc(m.f) + '</p>' : '<p class="muted sm" style="margin:0">To be set by L&amp;D</p>') +
       (m.m ? '<a href="' + esc(m.m) + '" target="_blank" rel="noopener" style="font-weight:600;font-size:14px;min-height:44px;display:inline-flex;align-items:center">Facilitator kit and materials ↗</a>' : '') + '</div>';
     h += '<p class="sm muted" style="margin:0;line-height:1.5">Marking a training done is for your own tracking. Your profile only changes when L&amp;D signs the module off in STAR LMS.</p></div></div></section>';
     view(h, 'curriculum');
-  }
-
-  function meView() {
-    const shelf = LIB.shelf.map((id) => TR[id]).filter(Boolean);
-    const done = LIB.done.filter((id) => TR[id]).length;
-    let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:26px">My page</h1>' +
-      '<div class="mepage"><div class="card"><b>' + esc(ME.name || 'Teacher') + '</b><span class="sm muted">' + esc(ME.email || '') + '</span><span class="sm">' + done + ' training' + (done === 1 ? '' : 's') + ' marked done · ' + shelf.length + ' on My shelf</span></div>' +
-      '<div class="note"><span>Your <b>profile</b> (levels by domain and suggested next training) comes here once L&amp;D links your STAR LMS results. You, your Teacher Leader, your centre manager and L&amp;D will see levels, never scores.</span></div>' +
-      '<div class="card"><h2 class="lbl">My shelf</h2>' + (shelf.length ? '<div class="shelf">' + shelf.map(trainingBook).join('') + '</div>' : '<p class="muted" style="margin:0">Empty. Open a training and tap the bookmark to save it here.</p>') + '</div></div></section>';
-    view(h, 'me');
   }
 
   // ---------------------------------------------------------------- search
@@ -420,13 +414,25 @@
     if (p[0] === 's') stageView(p[1], p[2]);
     else if (p[0] === 'm' && p[1]) moduleView(p[1]);
     else if (p[0] === 'curriculum') stageView(store.get('stage') || 'S2');
-    else if (p[0] === 'me') meView();
+    else if (p[0] === 'me') MORE.me();
+    else if (p[0] === 'test' && p[1]) MORE.test(p[1]);
+    else if (p[0] === 'team') MORE.team();
+    else if (p[0] === 'person' && p[1]) MORE.person(p[1]);
+    else if (p[0] === 'edit') MORE.editor(p[1], p[2] && p[2].split('?')[0]);
     else homeView();
     if (!/^#\/t\//.test(h)) scrollTo({ top: 0 });
   }
   addEventListener('hashchange', () => { routed++; route(); });
   document.querySelector('.nav a[data-nav="curriculum"]').addEventListener('click', (e) => { e.preventDefault(); location.hash = '#/s/' + (store.get('stage') || 'S2'); });
 
+  /** Re-read the catalogue after an editor change (the server cache is cleared on save). */
+  async function refreshCat() {
+    try { const r = await call('boot', [TOK]); CAT = r.cat; index(); store.setJson('boot', Object.assign({}, r, { lib: LIB })); } catch (e) {}
+  }
+  const MORE = window.STAR_MORE({
+    esc, why, toast, api, view, moduleBook, trainingBook, readyIn, refresh: refreshCat,
+    ME: () => ME, LIB: () => LIB, TR: () => TR, MOD: () => MOD, CAT: () => CAT
+  });
   window.STAR_APP = { boot, toast };
   boot();
 })();
