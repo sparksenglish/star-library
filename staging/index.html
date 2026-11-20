@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>STAR Library</title>
+<meta name="description" content="Sparks Teacher Advancement Resources">
+<meta name="theme-color" content="#1F3D2B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="STAR">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@600;700;800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script>(function(){try{var t=localStorage.getItem((window.STAR_CONFIG&&STAR_CONFIG.prefix||'starlib-')+'theme');document.documentElement.setAttribute('data-theme',t==='forest'||t==='sage'?t:'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/viewer.css">
+</head>
+<body>
+<div class="page">
+ <header class="bar">
+  <a class="logo" href="#/" aria-label="STAR Library home" style="text-decoration:none"><span class="wm">STAR <span>Library</span></span><span class="full">Sparks Teacher Advancement Resources</span></a>
+  <div class="me" id="me" hidden>
+   <button type="button" class="av" id="av" aria-haspopup="true" aria-expanded="false" aria-controls="me-pop" aria-label="Your account"></button>
+   <div class="me-pop" id="me-pop" hidden>
+    <b id="me-name"></b><small id="me-email"></small>
+    <div class="thm" role="radiogroup" aria-labelledby="thm-h"><span class="thm-h" id="thm-h">Theme</span>
+     <button type="button" role="radio" data-t="light" aria-checked="true"><span class="sw" style="background:#EDF0EB;box-shadow:inset -10px -10px 0 #C6E625"></span>Light</button>
+     <button type="button" role="radio" data-t="forest" aria-checked="false"><span class="sw" style="background:#2A4A29;box-shadow:inset -10px -10px 0 #C5D97A"></span>Forest</button>
+     <button type="button" role="radio" data-t="sage" aria-checked="false"><span class="sw" style="background:#DDE7DA;box-shadow:inset -10px -10px 0 #090D08"></span>Sage</button>
+    </div>
+    <button type="button" class="signout" id="install-btn" hidden style="color:var(--ink)">Install STAR on this phone</button>
+    <button type="button" class="signout" id="signout">Sign out</button>
+   </div>
+  </div>
+ </header>
+ <p class="motto">Keep Learning. <b>Keep Growing.</b></p>
+ <p class="offline" id="offline" role="status" hidden>You're offline. You can still browse; trainings open when you're back online.</p>
+ <p class="boot" id="boot" role="status">Opening STAR Library…</p>
+
+ <section class="gate" id="gate" hidden aria-labelledby="g-h">
+  <div class="bubble"><p>Welcome to STAR Library!<br><span>What would you like to learn today?</span></p></div>
+  <div class="gcard">
+   <form id="g1" novalidate>
+    <h2 id="g-h">Sign in</h2>
+    <p class="muted sm" style="margin:2px 4px 0">Use your center's or teacher center's Gmail.</p>
+    <label class="lbl" for="g-email">Email</label>
+    <input id="g-email" type="email" inputmode="email" autocomplete="username" placeholder="Your Gmail address">
+    <label class="lbl" for="g-pw">Password</label>
+    <input id="g-pw" type="password" autocomplete="current-password" placeholder="Password">
+    <label class="gshow"><input type="checkbox" id="g-show"> Show password</label>
+    <p class="gerr" id="g-e1" role="alert" hidden></p>
+    <button type="submit" class="btn" id="g-in">Sign in</button>
+    <div class="glinks"><button type="button" class="glink" id="g-forgot">Forgot password?</button></div>
+    <div class="gfirst"><p style="margin:0 0 10px">First time, or no password yet? We'll email you a sign-in code, then you create your password.</p>
+     <button type="button" class="btn line" id="g-send">Email me a sign-in code</button></div>
+   </form>
+   <form id="g2" novalidate hidden>
+    <h2>Check your inbox</h2>
+    <p class="muted sm" style="margin:4px"><span id="g2-why"></span> <b id="g-to"></b>. It works for 10 minutes. Check Spam if you can't see it.</p>
+    <input id="g-code" class="codein" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="6-digit code">
+    <p class="gerr" id="g-e2" role="alert" hidden></p><p class="gok" id="g-ok" role="status" hidden></p>
+    <button type="submit" class="btn" id="g-go">Continue</button>
+    <div class="glinks"><button type="button" class="glink" id="g-back">Use a different email</button><button type="button" class="glink" id="g-again">Send a new code</button></div>
+   </form>
+   <form id="g3" novalidate hidden>
+    <h2 id="g3-h">Create your password</h2>
+    <p class="muted sm" style="margin:4px">At least 8 characters. You'll use it to sign in next time.</p>
+    <input id="g3-user" type="email" autocomplete="username" hidden tabindex="-1" aria-hidden="true">
+    <input id="g-new" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password">
+    <input id="g-new2" type="password" autocomplete="new-password" placeholder="Type it again" aria-label="Type the new password again" style="margin-top:10px">
+    <label class="gshow"><input type="checkbox" id="g3-show"> Show password</label>
+    <p class="gerr" id="g-e3" role="alert" hidden></p>
+    <button type="submit" class="btn" id="g-save">Save and sign in</button>
+   </form>
+  </div>
+ </section>
+
+ <main id="view" hidden></main>
+</div>
+
+<nav class="nav" id="nav" aria-label="Main menu" hidden>
+ <a href="#/" data-nav="home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>Home</a>
+ <a href="#/curriculum" data-nav="curriculum"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h6a2 2 0 012 2v12a2 2 0 00-2-2H4zM20 5h-6a2 2 0 00-2 2v12a2 2 0 012-2h6z"/></svg>Curriculum</a>
+ <a href="#/me" data-nav="me"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>My page</a>
+</nav>
+
+<div id="deck" role="dialog" aria-modal="true" aria-labelledby="dk-title" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/api.js"></script>
+<script src="js/viewer.js"></script>
+<script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</body>
+</html>

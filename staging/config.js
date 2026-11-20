@@ -1,0 +1,1 @@
+window.STAR_CONFIG={"api":"https://script.google.com/macros/s/AKfycbxaYiML1ru9Uf6sfPAh3pHeEpYrtRFkvfE0vGaMim9psHx44kfi7oAe1RtLN-D7kYDp/exec","target":"staging","version":"c9ae829","prefix":"starlib-stg-"};
