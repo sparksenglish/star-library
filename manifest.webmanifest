@@ -1,0 +1,30 @@
+{
+  "id": "/star-library/",
+  "name": "STAR Library",
+  "short_name": "STAR",
+  "description": "Sparks Teacher Advancement Resources: the Sparks English teacher curriculum and training library.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EDF0EB",
+  "theme_color": "#1F3D2B",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
