@@ -37,8 +37,8 @@ a{color:var(--brand)}
 /* header */
 .bar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:4px 4px 0}
 .logo{display:flex;flex-direction:column;gap:2px;background:none;border:0;padding:0;cursor:pointer;text-align:left}
-.wm{font:800 clamp(28px,5vw,40px)/1 'Montserrat Alternates',sans-serif;color:#08B20B;-webkit-text-stroke:5px #fff;paint-order:stroke fill;text-shadow:3px 3px 0 #141414}
-.wm span{color:#2E6B3A}
+.lg{display:block;height:clamp(54px,8vw,76px);width:auto}
+.lg-d{display:none}:root[data-theme="forest"] .lg-l{display:none}:root[data-theme="forest"] .lg-d{display:block}
 .full{font-size:11px;color:var(--muted);margin-top:4px}
 .motto{margin:0 4px;font-style:italic;font-size:14px;color:var(--muted)}
 .motto b{font-weight:500;color:var(--ink);background:linear-gradient(transparent 62%,#D4E40E 62%)}

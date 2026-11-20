@@ -21,15 +21,21 @@
     if (window.STAR_MOCK) return window.STAR_MOCK(fn, args || []);
     if (!CFG.api) throw new Error('NO_API');
     let res;
+    const ac = window.AbortController ? new AbortController() : null;
+    const timer = ac ? setTimeout(() => ac.abort(), 45000) : 0;   // never wait forever
     try {
       res = await fetch(CFG.api, { method: 'POST', redirect: 'follow', body: JSON.stringify({ fn, args: args || [] }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, signal: ac ? ac.signal : undefined });
     } catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === 'AbortError') throw new Error('SLOW');
       if ((tries || 0) < 1) { await new Promise((r) => setTimeout(r, 800)); return call(fn, args, 1); }
       throw new Error('OFFLINE');
     }
     let body;
-    try { body = await res.json(); } catch (e) { throw new Error('SERVER_ERROR'); }
+    try { body = await res.json(); }
+    catch (e) { clearTimeout(timer); throw new Error(e && e.name === 'AbortError' ? 'SLOW' : 'SERVER_ERROR'); }
+    clearTimeout(timer);
     if (!body || !body.ok) throw new Error((body && body.error) || 'SERVER_ERROR');
     return body.data;
   }
