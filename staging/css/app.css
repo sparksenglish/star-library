@@ -196,9 +196,58 @@ h1.big em{font-style:normal;color:var(--brand)}
 .install{display:flex;align-items:center;gap:12px}
 .offline{background:#FFF4D6;color:#5C4500;border-radius:14px;padding:10px 14px;font-size:13px}
 
+/* ---------- layout: phone first, then tablet and PC ---------- */
+.home-top{display:flex;flex-direction:column;gap:16px}
+.home-top .recs{display:flex;flex-direction:column;gap:8px}
+.mgrid,.mmain,.mside{display:flex;flex-direction:column;gap:14px}
+.mepage{display:flex;flex-direction:column;gap:12px}
+.mepage .card:last-child{grid-column:1/-1}
 @media (min-width:760px){
  .shelf{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
  .shelf .book{height:190px}
- .home-top{display:grid;grid-template-columns:minmax(0,1.2fr) auto;gap:24px;align-items:center}
+ .home-top{display:grid;grid-template-columns:minmax(0,1.3fr) auto;gap:24px;align-items:center}
+ .home-top .recs{grid-column:1/-1}
+ .rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mepage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+ .shelf.stages{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+@media (min-width:1024px){
+ .page{max-width:1240px;padding-bottom:40px;gap:20px}
+ .sec{padding:26px 28px}
+ /* the menu sits at the top, beside the account circle */
+ .bar{padding-right:0}
+ .nav{position:absolute;top:max(18px,env(safe-area-inset-top));bottom:auto;left:auto;right:max(84px,calc((100vw - 1240px)/2 + 84px));transform:none;width:auto;gap:2px;padding:4px;border-radius:99px;box-shadow:var(--sh)}
+ .nav a{flex-direction:row;gap:8px;font-size:14px;font-weight:600;min-width:0;padding:0 16px;border-radius:99px;color:var(--ink)}
+ .nav a svg{width:18px;height:18px}
+ .nav a[aria-current="page"]{background:var(--ink);color:var(--sec)}
+ .nav a[aria-current="page"] svg{color:var(--sec)}
+ .toast{bottom:28px}
+ /* Home: intro | latest training, recommended underneath (wide PC: three columns) */
+ .home-top{grid-template-columns:minmax(0,1fr) 230px;gap:28px}
+ .home-top .recs .mini{display:grid;grid-template-columns:96px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:12px;row-gap:2px;align-items:center}
+ .home-top .recs .mini .th{grid-row:1/3;width:96px;height:60px}
+ .home-top .recs .mini .code{grid-column:2;align-self:end}
+ .home-top .recs .mini b{grid-column:2;align-self:start}
+ .home-top .recs .mini .st{grid-column:3;grid-row:1/3}
+ .shelf.stages{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .feat{width:230px;height:316px}
+ .feat .win{height:100px}
+ .shelf{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:28px 30px}
+ .shelf .book{height:206px}
+ .shelf .book .tt{font-size:14px}
+ .shelf.big{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+ .shelf.big .book{height:228px}
+ .folders{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+ .fd{height:190px}
+ /* Module page: shelf of trainings | details */
+ .mgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:28px;align-items:start}
+ .mside{position:sticky;top:20px}
+ .rows{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:1280px){
+ .home-top{grid-template-columns:minmax(0,1.2fr) 230px minmax(0,.95fr)}
+ .home-top .recs{grid-column:auto;align-self:stretch;justify-content:center}
+ .home-top .recs .grid2{grid-template-columns:1fr}
+}
+@media (min-width:1024px) and (hover:hover){.nav a:hover{background:var(--soft)}}
 @media (prefers-reduced-motion:reduce){.book,.fd .papers i{transition:none}.book:hover{transform:none}}

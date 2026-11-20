@@ -242,7 +242,7 @@
   function homeView() {
     const f = TR[CAT.featured];
     const recs = f ? recFor(f.i) : [];
-    const recent = (CAT.trainings || []).filter((t) => ready(t) && t.u).sort((a, b) => b.u.localeCompare(a.u)).slice(0, 4);
+    const recent = (CAT.trainings || []).filter((t) => ready(t) && t.u).sort((a, b) => b.u.localeCompare(a.u)).slice(0, 6);
     const shelf = LIB.shelf.map((id) => TR[id]).filter(Boolean).slice(0, 8);
     const popular = ['S2', 'S1', 'S3'].map((s) => stageOf(s)).filter(Boolean);
     let h = '<section class="sec"><div class="home-top"><div style="display:flex;flex-direction:column;gap:14px">' +
@@ -255,10 +255,9 @@
         '<span class="bcode">' + esc(f.i) + '</span><span class="tt">' + esc(trTitle(f)) + '</span>' + (f.m ? '<span class="sub">' + esc(f.t) + '</span>' : '') +
         '<span class="go">' + (f.k ? 'Open' : 'Watch') + ' training →</span></span></a>';
     }
-    h += '</div>';
-    if (recs.length) h += '<div style="display:flex;flex-direction:column;gap:8px"><span class="disp" style="font-weight:600;font-size:15px">Recommended next</span><div class="grid2">' + recs.map(miniCard).join('') + '</div></div>';
-    h += '</section>';
-    h += '<section class="sec" aria-labelledby="cur-h"><h2 class="sec-h u" id="cur-h">The curriculum</h2><div class="shelf">' + STAGES.map(stageBook).join('') + '</div></section>';
+    if (recs.length) h += '<div class="recs"><span class="disp" style="font-weight:600;font-size:15px">Recommended next</span><div class="grid2">' + recs.map(miniCard).join('') + '</div></div>';
+    h += '</div></section>';
+    h += '<section class="sec" aria-labelledby="cur-h"><h2 class="sec-h u" id="cur-h">The curriculum</h2><div class="shelf stages">' + STAGES.map(stageBook).join('') + '</div></section>';
     if (shelf.length) h += '<section class="sec" aria-labelledby="sh-h"><h2 class="sec-h" id="sh-h">My shelf</h2><div class="shelf">' + shelf.map(trainingBook).join('') + '</div></section>';
     if (recent.length) h += '<section class="sec" aria-labelledby="rc-h"><h2 class="sec-h" id="rc-h">Recently updated</h2><div class="rows">' + recent.map((t) =>
       '<a class="row" href="#/t/' + encodeURIComponent(t.i) + '"><span class="ic">' + esc(t.m || t.i) + '</span><span><b>' + esc(t.t) + '</b><br><span class="sm muted">Updated ' + niceDate(t.u) + '</span></span><span class="st">Ready</span></a>').join('') + '</div></section>';
@@ -324,8 +323,8 @@
       '<div style="display:flex;flex-direction:column;gap:8px"><div class="chips"><span class="tag dark">' + esc(m.c) + '</span>' + (m.y ? '<span class="tag">' + esc(m.y) + '</span>' : '') +
       (sk.length ? '<span class="tag">Depth: ' + esc(sk[0][1][1]) + '</span>' : '') + (m.a ? '<span class="tag">' + (m.a === 'Open' ? 'Open to everyone' : 'Assigned by L&amp;D') + '</span>' : '') + '</div>' +
       '<h1 class="big" id="m-h">' + esc(m.t) + '</h1><p class="sm muted" style="margin:0">' + esc(st.s + ' ' + (st.n || '')) + (m.h ? ' · ' + esc(m.h) + ' h' : '') + (m.o ? ' · owner ' + esc(m.o) : '') + '</p></div>';
-    h += '<div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:17px;font-weight:600">Trainings on this shelf · ' + trs.length + '</h2>' +
-      (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div>';
+    h += '<div class="mgrid"><div class="mmain"><div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:17px;font-weight:600">Trainings on this shelf · ' + trs.length + '</h2>' +
+      (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div></div><div class="mside">';
     if (m.d) h += '<div class="box"><h2 class="lbl">You\'ll produce</h2><p style="margin:0;line-height:1.5">' + esc(m.d) + '</p></div>';
     if (m.p.length) h += '<div class="box"><h2 class="lbl">Before this module</h2><div class="chips">' + m.p.map((p) => MOD[p] ? '<a class="pre" href="#/m/' + encodeURIComponent(p) + '"><b>' + esc(p) + '</b> ' + esc(MOD[p].t) + '</a>' : '<span class="pre">' + esc(p) + '</span>').join('') + '</div></div>';
     if (sk.length) h += '<div class="box" style="gap:0"><h2 class="lbl" style="margin-bottom:6px">Skills' + (dom ? ' · ' + esc(dom) : '') + '</h2>' +
@@ -333,7 +332,7 @@
     else if (m.x) h += '<div class="box"><h2 class="lbl">SETDT coverage</h2><p style="margin:0;font-size:14px;line-height:1.5">' + esc(m.x) + '</p></div>';
     if (m.f || m.m) h += '<div class="box"><h2 class="lbl">Facilitator</h2>' + (m.f ? '<p style="margin:0">' + esc(m.f) + '</p>' : '<p class="muted sm" style="margin:0">To be set by L&amp;D</p>') +
       (m.m ? '<a href="' + esc(m.m) + '" target="_blank" rel="noopener" style="font-weight:600;font-size:14px;min-height:44px;display:inline-flex;align-items:center">Facilitator kit and materials ↗</a>' : '') + '</div>';
-    h += '<p class="sm muted" style="margin:0;line-height:1.5">Marking a training done is for your own tracking. Your profile only changes when L&amp;D signs the module off in STAR LMS.</p></section>';
+    h += '<p class="sm muted" style="margin:0;line-height:1.5">Marking a training done is for your own tracking. Your profile only changes when L&amp;D signs the module off in STAR LMS.</p></div></div></section>';
     view(h, 'curriculum');
   }
 
@@ -341,9 +340,9 @@
     const shelf = LIB.shelf.map((id) => TR[id]).filter(Boolean);
     const done = LIB.done.filter((id) => TR[id]).length;
     let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:26px">My page</h1>' +
-      '<div class="card"><b>' + esc(ME.name || 'Teacher') + '</b><span class="sm muted">' + esc(ME.email || '') + '</span><span class="sm">' + done + ' training' + (done === 1 ? '' : 's') + ' marked done · ' + shelf.length + ' on My shelf</span></div>' +
+      '<div class="mepage"><div class="card"><b>' + esc(ME.name || 'Teacher') + '</b><span class="sm muted">' + esc(ME.email || '') + '</span><span class="sm">' + done + ' training' + (done === 1 ? '' : 's') + ' marked done · ' + shelf.length + ' on My shelf</span></div>' +
       '<div class="note"><span>Your <b>profile</b> (levels by domain and suggested next training) comes here once L&amp;D links your STAR LMS results. You, your Teacher Leader, your centre manager and L&amp;D will see levels, never scores.</span></div>' +
-      '<div class="card"><h2 class="lbl">My shelf</h2>' + (shelf.length ? '<div class="shelf">' + shelf.map(trainingBook).join('') + '</div>' : '<p class="muted" style="margin:0">Empty. Open a training and tap the bookmark to save it here.</p>') + '</div></section>';
+      '<div class="card"><h2 class="lbl">My shelf</h2>' + (shelf.length ? '<div class="shelf">' + shelf.map(trainingBook).join('') + '</div>' : '<p class="muted" style="margin:0">Empty. Open a training and tap the bookmark to save it here.</p>') + '</div></div></section>';
     view(h, 'me');
   }
 
