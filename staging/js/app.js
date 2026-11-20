@@ -52,7 +52,7 @@
   }
   function signedOut() {
     if (!$('gate').hidden) return;
-    store.set('tok', ''); store.set('boot', ''); TOK = '';
+    store.set('tok', ''); store.set('boot', ''); TOK = ''; MORE.forget();
     if (window.STAR_VIEW) window.STAR_VIEW.close(true);
     gate('Please sign in again.');
   }
@@ -131,7 +131,7 @@
   document.addEventListener('click', (e) => { if (!e.target.closest('.me')) { $('me-pop').hidden = true; $('av').setAttribute('aria-expanded', 'false'); } });
   $('signout').onclick = () => {
     const t = TOK; call('signOut', [t]).catch(() => {});
-    store.set('tok', ''); store.set('boot', ''); TOK = ''; ME = null; CAT = null; LIB = { shelf: [], journeys: [], done: [] };
+    store.set('tok', ''); store.set('boot', ''); TOK = ''; MORE.forget(); ME = null; CAT = null; LIB = { shelf: [], journeys: [], done: [] };
     if (window.STAR_VIEW) window.STAR_VIEW.close(true);
     gate();
   };
@@ -149,7 +149,7 @@
     if (saved) enter(saved, true);          // show the last catalogue at once, then refresh it
     try { enter(await call('boot', [TOK])); }
     catch (e) {
-      if (isOut(e)) { store.set('tok', ''); store.set('boot', ''); TOK = ''; gate(); return; }
+      if (isOut(e)) { store.set('tok', ''); store.set('boot', ''); TOK = ''; MORE.forget(); gate(); return; }
       if (!saved) { $('boot').textContent = why(e); $('boot').insertAdjacentHTML('beforeend', '<br><br><button class="btn" type="button" id="retry">Try again</button>'); $('retry').onclick = () => { $('boot').textContent = 'Opening STAR Library…'; boot(); }; }
     }
   }
@@ -166,6 +166,7 @@
     document.querySelector('.nav a[data-nav="team"]').hidden = !ME.role || ME.role === 'Teacher';
     document.querySelector('.nav a[data-nav="edit"]').hidden = ME.role !== 'L&D';
     route();
+    if (!fromCache) MORE.prefetch(ME.role);
   }
 
   // ---------------------------------------------------------------- catalogue helpers

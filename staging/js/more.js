@@ -11,6 +11,22 @@ window.STAR_MORE = function (X) {
   const loading = (nav, title) => X.view('<section class="sec"><h1 class="big" style="font-size:26px">' + esc(title) + '</h1><p class="muted">Loading…</p></section>', nav);
   const failed = (nav, e) => X.view('<section class="sec"><h1 class="big" style="font-size:24px">This page did not load</h1><p class="muted">' +
     esc(X.why(e)) + '</p><button type="button" class="btn" onclick="location.reload()">Try again</button></section>', nav);
+  // Last copy of a page, kept on this device so it opens at once; fresh data replaces it a moment later.
+  const S = window.STAR.store;
+  const here = (h) => location.hash === h || (h === '#/me' && (location.hash === '' || location.hash === '#/me'));
+  async function fresh(key, fn, args, draw, nav, title, hash) {
+    const old = S.json(key);
+    if (old) draw(old); else loading(nav, title);
+    let d; try { d = await X.api(fn, args); } catch (e) { if (!old) failed(nav, e); return; }
+    S.setJson(key, d);
+    if (here(hash) && JSON.stringify(d) !== JSON.stringify(old)) draw(d);
+  }
+  function prefetch(role) {   // after sign-in: get My page (and Team) ready in the background
+    setTimeout(() => {
+      X.api('profile', []).then((d) => S.setJson('pg-me', d)).catch(() => {});
+      if (role && role !== 'Teacher') X.api('team', []).then((d) => S.setJson('pg-team', d)).catch(() => {});
+    }, 1500);
+  }
   const errText = (e) => { const m = String(e && e.message || e); return m.indexOf('MSG:') === 0 ? m.slice(4) : X.why(e); };
 
   // ------------------------------------------------------------ profile pieces
@@ -25,10 +41,9 @@ window.STAR_MORE = function (X) {
   const nextBooks = (codes) => codes.map((c) => X.MOD()[c]).filter(Boolean).map(X.moduleBook).join('');
 
   // ------------------------------------------------------------ My page
-  async function me() {
-    loading('me', 'My page');
-    let p, info;
-    try { [p, info] = await Promise.all([X.api('profile', []), X.api('testInfo', [])]); } catch (e) { return failed('me', e); }
+  function me() { return fresh('pg-me', 'profile', [], meDraw, 'me', 'My page', '#/me'); }
+  function meDraw(p) {
+    const info = p.test || [];
     const ME = X.ME(), LIB = X.LIB(), TR = X.TR();
     const shelf = LIB.shelf.map((id) => TR[id]).filter(Boolean);
     const total = info.filter((s) => s.count).length, doneN = info.filter((s) => s.level).length;
@@ -74,6 +89,7 @@ window.STAR_MORE = function (X) {
       try {
         const r = await X.api('testSubmit', [T.d, T.a]);
         const pass = r.level === 'Know';
+        S.set('pg-me', '');
         X.view('<section class="sec" style="text-align:center;align-items:center"><div class="disp" style="font-size:40px;color:var(--brand)">' + (pass ? '★' : '…') + '</div>' +
           '<h1 class="big" style="font-size:26px">' + (pass ? 'Section done: Know level' : 'Not yet') + '</h1><p style="margin:0">' + r.correct + ' of ' + r.total + ' correct.</p>' +
           '<p class="muted" style="margin:0;max-width:44ch">' + (pass ? 'This shows on your profile as Know (tested).' : 'You can try this section again from ' + day(r.retakeOn) + '. Your suggested trainings will help.') + '</p>' +
@@ -85,11 +101,7 @@ window.STAR_MORE = function (X) {
 
   // ------------------------------------------------------------ Team
   let TEAM = null, teamCentre = '', teamQ = '';
-  async function team() {
-    loading('team', 'My team');
-    try { TEAM = await X.api('team', []); } catch (e) { return failed('team', e); }
-    teamDraw();
-  }
+  function team() { return fresh('pg-team', 'team', [], (d) => { TEAM = d; teamDraw(); }, 'team', 'My team', '#/team'); }
   function teamDraw() {
     const all = TEAM.people, centres = [...new Set(all.flatMap((p) => p.centres))].sort();
     const q = teamQ.toLowerCase();
@@ -115,9 +127,8 @@ window.STAR_MORE = function (X) {
   }
   const initials = (n) => { const w = String(n).replace(/^SE-\s*/i, '').split(/[\s@.]+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 ? w[1][0] : '')).toUpperCase(); };
 
-  async function person(email) {
-    loading('team', 'Teacher');
-    let p; try { p = await X.api('profile', [email]); } catch (e) { return failed('team', e); }
+  function person(email) { return fresh('pg-p-' + email, 'profile', [email], personDraw, 'team', 'Teacher', '#/person/' + encodeURIComponent(email)); }
+  function personDraw(p) {
     X.view('<section style="display:flex;flex-direction:column;gap:12px"><a class="btn soft back" href="#/team">← Back</a><div class="mepage">' +
       '<div class="card"><b style="font-size:18px">' + esc(p.name || p.email) + '</b><span class="sm muted">' + esc(p.email) + '</span><span class="sm">' + esc(p.centres.join(', ') || '—') + ' · last visit ' + ago(p.last) + ' · ' + p.tested + ' of 8 sections tested</span></div>' +
       '<div class="card"><h2 class="lbl">Levels by domain</h2>' + levelRows(p.domains) + '</div>' +
@@ -253,5 +264,8 @@ window.STAR_MORE = function (X) {
     document.querySelectorAll('[data-hide]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { const r = await X.api('edHide', [+b.dataset.hide, b.dataset.h === '1']); X.toast(r.msg); edQuestions(); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
   }
 
-  return { me, test, team, person, editor };
+  function forget() {   // sign out: remove saved pages from this device
+    try { const P = (window.STAR.cfg.prefix || 'starlib-') + 'pg-'; Object.keys(localStorage).forEach((k) => { if (k.indexOf(P) === 0) localStorage.removeItem(k); }); } catch (e) {}
+  }
+  return { me, test, team, person, editor, prefetch, forget };
 };
