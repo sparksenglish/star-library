@@ -249,18 +249,20 @@ h1.big em{font-style:normal;color:var(--brand)}
 .home-top{display:flex;flex-direction:column;gap:16px}
 .home-top .recs{display:flex;flex-direction:column;gap:8px}
 .mgrid,.mmain,.mside{display:flex;flex-direction:column;gap:14px}
-.mepage{display:flex;flex-direction:column;gap:12px}
-.mepage .card:last-child{grid-column:1/-1}
+.mepage,.mecols,.mecol{display:flex;flex-direction:column;gap:12px}
+#view:not([hidden]){display:flex;flex-direction:column;gap:16px}
 @media (min-width:760px){
  .shelf{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
  .shelf .book{height:190px}
  .home-top{display:grid;grid-template-columns:minmax(0,1.3fr) auto;gap:24px;align-items:center}
  .home-top .recs{grid-column:1/-1}
  .rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
- .mepage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
  .shelf.stages{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media (min-width:1024px){
+ #view:not([hidden]){gap:20px}
+ .mecols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:16px}
+ .mecol{gap:16px}
  .page{max-width:1240px;padding-bottom:40px;gap:20px}
  .sec{padding:26px 28px}
  /* the menu sits at the top, beside the account circle */

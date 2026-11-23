@@ -194,6 +194,7 @@
   const ready = (t) => t.st === 'L' && !!(t.k || t.r);
   const readyIn = (code) => (BYMOD[code] || []).filter(ready).length;
   const stageOf = (s) => STAGES.find((x) => x.s === s);
+  const stageNo = (s) => (s === 'OTHER' ? 'Other' : /^S\d$/.test(s) ? 'Stage ' + s.slice(1) : s);   // S2 -> Stage 2
   const modsIn = (s, g) => (CAT.modules || []).filter((m) => m.s === s && (g == null || m.g === g));
   const coverKey = (t) => (t && t.k === 'slides' ? t.i + ':' + (t.cv || 1) : '');
   const trTitle = (t) => (t.m && MOD[t.m] ? MOD[t.m].t : t.t);
@@ -214,8 +215,8 @@
   const stageBook = (st) => {
     const ms = st.s === 'OTHER' ? [] : modsIn(st.s);
     const sub = st.s === 'OTHER' ? OTHER.filter(ready).length + ' ready' : ms.length + ' modules';
-    return '<a class="book" href="#/s/' + st.s + '" aria-label="' + esc((st.s === 'OTHER' ? '' : st.s + ' ') + st.n + ', ' + sub) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +
-      '<span class="win">' + glyph(st.s) + '</span><span class="tt">' + esc((st.s === 'OTHER' ? '' : st.s + ' ') + st.n) + '</span><span class="sub">' + esc(sub) + '</span></span></a>';
+    return '<a class="book" href="#/s/' + st.s + '" aria-label="' + esc((st.s === 'OTHER' ? '' : stageNo(st.s) + ': ') + st.n + ', ' + sub) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +
+      '<span class="win">' + glyph(st.s) + '</span>' + (st.s === 'OTHER' ? '' : '<span class="bcode">' + stageNo(st.s) + '</span>') + '<span class="tt">' + esc(st.n) + '</span><span class="sub">' + esc(sub) + '</span></span></a>';
   };
   const moduleBook = (m) => {
     const n = readyIn(m.c);
@@ -288,15 +289,15 @@
   function stageView(s, g) {
     const st = stageOf(s) || stageOf('S2');
     store.set('stage', st.s);
-    const tabs = '<div class="tabs" role="tablist" aria-label="Stage">' + STAGES.map((x) => '<a role="tab" class="chip' + (x.s === st.s ? ' on' : '') + '" aria-selected="' + (x.s === st.s) + '" href="#/s/' + x.s + '">' + (x.s === 'OTHER' ? 'Other' : x.s) + '</a>').join('') + '</div>';
+    const tabs = '<div class="tabs" role="tablist" aria-label="Stage">' + STAGES.map((x) => '<a role="tab" class="chip' + (x.s === st.s ? ' on' : '') + '" aria-selected="' + (x.s === st.s) + '" href="#/s/' + x.s + '">' + stageNo(x.s) + '</a>').join('') + '</div>';
     let h = '<section class="sec" aria-labelledby="st-h">';
     if (g) {
-      h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + backBtn('#/s/' + st.s) + '<nav class="crumbs" aria-label="You are here"><a href="#/">Home</a> › <a href="#/s/' + st.s + '">' + esc(st.s) + '</a> › <b>' + esc(g) + '</b></nav></div>' +
+      h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + backBtn('#/s/' + st.s) + '<nav class="crumbs" aria-label="You are here"><a href="#/">Home</a> › <a href="#/s/' + st.s + '">' + esc(stageNo(st.s)) + '</a> › <b>' + esc(g) + '</b></nav></div>' +
         '<div><h1 class="big" id="st-h" style="font-size:26px">' + esc(g) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(GROUP_NOTE[g] || '') + '</p></div>';
       const ms = modsIn(st.s, g);
       h += ms.length ? '<div class="shelf" role="list">' + ms.map(moduleBook).join('') + '</div>' : '<p class="muted">No modules here yet.</p>';
     } else {
-      h += tabs + '<div class="vh"><span class="badge" aria-hidden="true">' + glyph(st.s) + '</span><div style="flex:1"><h1 class="big" id="st-h" style="font-size:26px">' + esc(st.n) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(st.w) + '</p></div></div>';
+      h += tabs + '<div class="vh"><span class="badge" aria-hidden="true">' + glyph(st.s) + '</span><div style="flex:1">' + (st.s === 'OTHER' ? '' : '<span class="sm muted" style="font-weight:600">' + stageNo(st.s) + '</span>') + '<h1 class="big" id="st-h" style="font-size:26px">' + esc(st.n) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(st.w) + '</p></div></div>';
       if (st.s === 'OTHER') {
         const groups = {};
         OTHER.forEach((t) => { (groups[t.g || 'Other'] = groups[t.g || 'Other'] || []).push(t); });
@@ -323,10 +324,10 @@
     const sk = m.k.map((id) => [id, CAT.skills[id]]).filter((x) => x[1]);
     const dom = sk.length ? sk[0][1][2] : '';
     let h = '<section class="sec" aria-labelledby="m-h"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + backBtn(back) +
-      '<nav class="crumbs" aria-label="You are here">' + esc(m.s) + (m.g ? ' › ' + esc(m.g) : '') + ' › <b>' + esc(m.c) + '</b></nav></div>' +
+      '<nav class="crumbs" aria-label="You are here">' + esc(stageNo(m.s)) + (m.g ? ' › ' + esc(m.g) : '') + ' › <b>' + esc(m.c) + '</b></nav></div>' +
       '<div style="display:flex;flex-direction:column;gap:8px"><div class="chips"><span class="tag dark">' + esc(m.c) + '</span>' + (m.y ? '<span class="tag">' + esc(m.y) + '</span>' : '') +
       (sk.length ? '<span class="tag">Depth: ' + esc(sk[0][1][1]) + '</span>' : '') + (m.a ? '<span class="tag">' + (m.a === 'Open' ? 'Open to everyone' : 'Assigned by L&amp;D') + '</span>' : '') + '</div>' +
-      '<h1 class="big" id="m-h">' + esc(m.t) + '</h1><p class="sm muted" style="margin:0">' + esc(st.s + ' ' + (st.n || '')) + (m.h ? ' · ' + esc(m.h) + ' h' : '') + (m.o ? ' · owner ' + esc(m.o) : '') + '</p></div>';
+      '<h1 class="big" id="m-h">' + esc(m.t) + '</h1><p class="sm muted" style="margin:0">' + esc(stageNo(st.s) + ': ' + (st.n || '')) + (m.h ? ' · ' + esc(m.h) + ' h' : '') + (m.o ? ' · owner ' + esc(m.o) : '') + '</p></div>';
     h += '<div class="mgrid"><div class="mmain"><div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:17px;font-weight:600">Trainings on this shelf · ' + trs.length + '</h2>' +
       (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div></div><div class="mside">';
     if (m.d) h += '<div class="box"><h2 class="lbl">You\'ll produce</h2><p style="margin:0;line-height:1.5">' + esc(m.d) + '</p></div>';
@@ -356,7 +357,7 @@
       hits = [];
       (CAT.modules || []).forEach((m) => {
         const skillTxt = m.k.map((id) => id + ' ' + ((CAT.skills[id] || [])[0] || '')).join(' ');
-        if (has((m.c + ' ' + m.t + ' ' + m.x + ' ' + m.g + ' ' + skillTxt).toLowerCase())) hits.push({ href: '#/m/' + encodeURIComponent(m.c), code: m.c, t: m.t, sub: m.s + (m.g ? ' › ' + m.g : ''), n: readyIn(m.c) });
+        if (has((m.c + ' ' + m.t + ' ' + m.x + ' ' + m.g + ' ' + skillTxt).toLowerCase())) hits.push({ href: '#/m/' + encodeURIComponent(m.c), code: m.c, t: m.t, sub: stageNo(m.s) + (m.g ? ' › ' + m.g : ''), n: readyIn(m.c) });
       });
       (CAT.trainings || []).forEach((t) => {
         if (has((t.i + ' ' + t.t + ' ' + t.d + ' ' + t.g).toLowerCase())) hits.push({ href: '#/t/' + encodeURIComponent(t.i), code: t.i, t: t.t, sub: t.m ? 'Training in ' + t.m : (t.g || 'Other'), n: ready(t) ? 1 : 0 });

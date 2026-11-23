@@ -1,6 +1,6 @@
 // STAR Library service worker. Scope: the folder it is served from (/star-library/ or /star-library/staging/).
 // The app files are kept for offline start; the Apps Script API (another site) is never cached here.
-const CACHE = 'starlib-production-cf09748';
+const CACHE = 'starlib-production-fa4e179';
 const SHELL = ['./', 'index.html', 'config.js', 'css/app.css', 'css/viewer.css', 'js/api.js', 'js/app.js', 'js/viewer.js', 'js/more.js',
   'manifest.webmanifest', 'img/icon-192.png', 'img/favicon.png', 'img/logo.webp', 'img/logo-forest.webp'];
 

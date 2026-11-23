@@ -1,1 +1,1 @@
-window.STAR_CONFIG={"api":"https://script.google.com/macros/s/AKfycbwhWwqcPk6o-N8FGyzL29cAs8opz-Wk9XiD1l6frq3rKc3Yi9hPYJgfNWaYxeVZVKs/exec","target":"production","version":"cf09748","prefix":"starlib-"};
+window.STAR_CONFIG={"api":"https://script.google.com/macros/s/AKfycbwhWwqcPk6o-N8FGyzL29cAs8opz-Wk9XiD1l6frq3rKc3Yi9hPYJgfNWaYxeVZVKs/exec","target":"production","version":"fa4e179","prefix":"starlib-"};

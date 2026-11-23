@@ -13,7 +13,8 @@ window.STAR_MORE = function (X) {
     esc(X.why(e)) + '</p><button type="button" class="btn" onclick="location.reload()">Try again</button></section>', nav);
   // Last copy of a page, kept on this device so it opens at once; fresh data replaces it a moment later.
   const S = window.STAR.store;
-  const here = (h) => location.hash === h || (h === '#/me' && (location.hash === '' || location.hash === '#/me'));
+  const dec = (h) => { try { return decodeURIComponent(h); } catch (e) { return h; } };
+  const here = (h) => dec(location.hash) === dec(h) || (h === '#/me' && (location.hash === '' || location.hash === '#/me'));
   async function fresh(key, fn, args, draw, nav, title, hash) {
     const old = S.json(key);
     if (old) draw(old); else loading(nav, title);
@@ -50,15 +51,16 @@ window.STAR_MORE = function (X) {
     let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:26px">My page</h1><div class="mepage">' +
       '<div class="card"><b>' + esc(ME.name || 'Teacher') + '</b><span class="sm muted">' + esc(ME.email || '') + '</span>' +
       '<span class="sm">' + esc(ME.role || 'Teacher') + (ME.centres && ME.centres.length ? ' · ' + esc(ME.centres.join(', ')) : '') + ' · ' + LIB.done.length + ' trainings marked done</span></div>' +
-      '<div class="card"><h2 class="lbl">Profiling test</h2>' +
+      '<div class="mecols"><div class="mecol"><div class="card"><h2 class="lbl">Profiling test</h2>' +
       (total ? '<p style="margin:0">' + doneN + ' of ' + total + ' sections done. One section per domain, about 10 questions each. It checks what you know, not how you teach.</p>' +
         '<div class="tlist">' + info.filter((s) => s.count).map((s) => '<div class="trow"><span><b>' + esc(s.d) + '</b> ' + esc(s.n) + '<br><span class="sm muted">' +
           (s.level === 'Know' ? 'Done · Know' : s.level ? 'Not yet · try again ' + (s.canTake ? 'now' : 'from ' + day(s.retakeOn)) : s.count + ' questions') + '</span></span>' +
           (s.canTake ? '<a class="btn' + (s.level ? ' line' : '') + '" href="#/test/' + s.d + '">' + (s.level ? 'Try again' : 'Start') + '</a>' : '<span class="st' + (s.level === 'Know' ? '' : ' soon') + '">' + (s.level === 'Know' ? 'Done' : 'Later') + '</span>') + '</div>').join('') + '</div>'
         : '<p class="muted" style="margin:0">L&amp;D is preparing the questions. You\'ll see the test here when it\'s ready.</p>') + '</div>' +
-      '<div class="card"><h2 class="lbl">My levels by domain</h2>' + levelRows(p.domains) +
+      '<div class="note"><span>You, your Teacher Leader, your centre and L&amp;D can see your levels. They never see your scores. Your profile is for planning your training, not a rating.</span></div></div>' +
+      '<div class="mecol"><div class="card"><h2 class="lbl">My levels by domain</h2>' + levelRows(p.domains) +
       '<p class="sm muted" style="margin:6px 0 0">Tested = profiling test (Know level). Demonstrated = a module signed off by L&amp;D.</p></div>' +
-      '<div class="note"><span>You, your Teacher Leader, your centre and L&amp;D can see your levels. They never see your scores. Your profile is for planning your training, not a rating.</span></div>' +
+      '</div></div>' +
       (p.next.length ? '<div class="card"><h2 class="lbl">Suggested next</h2><div class="shelf">' + nextBooks(p.next) + '</div></div>' : '') +
       '<div class="card"><h2 class="lbl">My shelf</h2>' + (shelf.length ? '<div class="shelf">' + shelf.map(X.trainingBook).join('') + '</div>' : '<p class="muted" style="margin:0">Empty. Open a training and tap the bookmark to save it here.</p>') + '</div>' +
       '</div></section>';
@@ -131,8 +133,8 @@ window.STAR_MORE = function (X) {
   function personDraw(p) {
     X.view('<section style="display:flex;flex-direction:column;gap:12px"><a class="btn soft back" href="#/team">← Back</a><div class="mepage">' +
       '<div class="card"><b style="font-size:18px">' + esc(p.name || p.email) + '</b><span class="sm muted">' + esc(p.email) + '</span><span class="sm">' + esc(p.centres.join(', ') || '—') + ' · last visit ' + ago(p.last) + ' · ' + p.tested + ' of 8 sections tested</span></div>' +
-      '<div class="card"><h2 class="lbl">Levels by domain</h2>' + levelRows(p.domains) + '</div>' +
-      (p.next.length ? '<div class="card"><h2 class="lbl">Suggested next</h2><div class="shelf">' + nextBooks(p.next) + '</div></div>' : '') +
+      '<div class="mecols"><div class="mecol"><div class="card"><h2 class="lbl">Levels by domain</h2>' + levelRows(p.domains) + '</div></div>' +
+      '<div class="mecol">' + (p.next.length ? '<div class="card"><h2 class="lbl">Suggested next</h2><div class="shelf">' + nextBooks(p.next) + '</div></div>' : '<div class="card"><h2 class="lbl">Suggested next</h2><p class="muted" style="margin:0">Nothing yet. Suggestions appear after the profiling test.</p></div>') + '</div></div>' +
       '</div><p class="sm muted" style="margin:0">Levels only. Scores stay with L&amp;D.</p></section>', 'team');
   }
 
@@ -227,7 +229,7 @@ window.STAR_MORE = function (X) {
     X.view('<section class="sec"><h1 class="big" style="font-size:26px">Editor</h1>' + edTabs() +
       '<input id="edq" type="search" class="edin" placeholder="Search code or title" value="' + esc(edQ) + '" aria-label="Search modules">' +
       '<div class="edlist">' + list.map((m) => '<a class="edrow" href="#/edit/modules/' + encodeURIComponent(m.Code) + '"><span class="code">' + esc(m.Code) + '</span><span><b>' + esc(m.Title) + '</b><br><span class="sm muted">' +
-        esc(m.Stage + ' · ' + (m.Type || '—') + ' · ' + (m['Library access'] || 'access not set') + (m.Facilitator ? ' · ' + m.Facilitator : '')) + '</span></span><span class="st' + (X.readyIn(m.Code) ? '' : ' soon') + '">' + X.readyIn(m.Code) + ' ready</span></a>').join('') + '</div></section>', 'edit');
+        esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '—') + ' · ' + (m['Library access'] || 'access not set') + (m.Facilitator ? ' · ' + m.Facilitator : '')) + '</span></span><span class="st' + (X.readyIn(m.Code) ? '' : ' soon') + '">' + X.readyIn(m.Code) + ' ready</span></a>').join('') + '</div></section>', 'edit');
     const I = $('edq'); I.oninput = () => { edQ = I.value; const pos = I.selectionStart; edModules(); const J = $('edq'); J.focus(); J.setSelectionRange(pos, pos); };
   }
   function edModule(code) {
@@ -235,7 +237,7 @@ window.STAR_MORE = function (X) {
     if (!m) return X.view('<section class="sec"><p>Not found.</p><a class="btn" href="#/edit/modules">Back</a></section>', 'edit');
     const trs = ED.trainings.filter((t) => t.Module === code);
     X.view('<section class="sec"><a class="btn soft back" href="#/edit/modules">← Modules</a><h1 class="big" style="font-size:24px">' + esc(m.Code) + ' · ' + esc(m.Title) + '</h1>' +
-      '<p class="sm muted" style="margin:0">' + esc(m.Stage + ' · ' + (m.Type || '')) + '. Title, hours, deliverable and skills come from the module catalogue.</p><div class="edform">' +
+      '<p class="sm muted" style="margin:0">' + esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '')) + '. Title, hours, deliverable and skills come from the module catalogue.</p><div class="edform">' +
       fld('Facilitator', inp('m-Facilitator', m.Facilitator, 'Name')) +
       fld('Facilitator kit / materials link', inp('m-Materials link', m['Materials link'], 'https://drive.google.com/…')) +
       fld('Library access', sel('m-Library access', m['Library access'], [['', '(not set)'], 'Open', 'Assigned']), 'Open = anyone can self-learn. Assigned = L&amp;D assigns it.') +
