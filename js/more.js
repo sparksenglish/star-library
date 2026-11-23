@@ -8,8 +8,8 @@ window.STAR_MORE = function (X) {
   const LEVELS = ['Know', 'Use', 'Adapt', 'Build'];
   const ago = (t) => { if (!t) return 'never'; const d = Math.floor((Date.now() - t) / 864e5); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
   const day = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const loading = (nav, title) => X.view('<section class="sec"><h1 class="big" style="font-size:26px">' + esc(title) + '</h1><p class="muted">Loading…</p></section>', nav);
-  const failed = (nav, e) => X.view('<section class="sec"><h1 class="big" style="font-size:24px">This page did not load</h1><p class="muted">' +
+  const loading = (nav, title) => X.view('<section class="sec"><h1 class="big" style="font-size:28px">' + esc(title) + '</h1><p class="muted">Loading…</p></section>', nav);
+  const failed = (nav, e) => X.view('<section class="sec"><h1 class="big" style="font-size:28px">This page did not load</h1><p class="muted">' +
     esc(X.why(e)) + '</p><button type="button" class="btn" onclick="location.reload()">Try again</button></section>', nav);
   // Last copy of a page, kept on this device so it opens at once; fresh data replaces it a moment later.
   const S = window.STAR.store;
@@ -48,7 +48,7 @@ window.STAR_MORE = function (X) {
     const ME = X.ME(), LIB = X.LIB(), TR = X.TR();
     const shelf = LIB.shelf.map((id) => TR[id]).filter(Boolean);
     const total = info.filter((s) => s.count).length, doneN = info.filter((s) => s.level).length;
-    let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:26px">My page</h1><div class="mepage">' +
+    let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:28px">My page</h1><div class="mepage">' +
       '<div class="card"><b>' + esc(ME.name || 'Teacher') + '</b><span class="sm muted">' + esc(ME.email || '') + '</span>' +
       '<span class="sm">' + esc(ME.role || 'Teacher') + (ME.centres && ME.centres.length ? ' · ' + esc(ME.centres.join(', ')) : '') + ' · ' + LIB.done.length + ' trainings marked done</span></div>' +
       '<div class="mecols"><div class="mecol"><div class="card"><h2 class="lbl">Profiling test</h2>' +
@@ -72,14 +72,14 @@ window.STAR_MORE = function (X) {
   async function test(d) {
     loading('me', 'Profiling test');
     try { const s = await X.api('testSection', [d]); T = { d: s.d, n: s.n, qs: s.questions, i: 0, a: {} }; }
-    catch (e) { return X.view('<section class="sec"><h1 class="big" style="font-size:24px">This section isn\'t open</h1><p class="muted">You may have finished it already, or you can try again later.</p><a class="btn" href="#/me">Back to My page</a></section>', 'me'); }
+    catch (e) { return X.view('<section class="sec"><h1 class="big" style="font-size:28px">This section isn\'t open</h1><p class="muted">You may have finished it already, or you can try again later.</p><a class="btn" href="#/me">Back to My page</a></section>', 'me'); }
     q();
   }
   function q() {
     const s = T.qs[T.i], n = T.qs.length, last = T.i === n - 1;
     X.view('<section class="sec tq" aria-labelledby="tq-h"><div class="tqtop"><span class="tag dark">' + esc(T.d) + '</span><span class="sm muted">' + esc(T.n) + ' · question ' + (T.i + 1) + ' of ' + n + '</span></div>' +
       '<div class="prog"><i style="width:' + Math.round(T.i / n * 100) + '%"></i></div>' +
-      '<h1 class="disp" id="tq-h" style="margin:0;font-size:20px;line-height:1.35">' + esc(s.q) + '</h1>' +
+      '<h1 class="disp" id="tq-h" style="margin:0;font-size:20px;line-height:1.4;font-weight:700;letter-spacing:0">' + esc(s.q) + '</h1>' +
       '<div class="opts" role="radiogroup" aria-labelledby="tq-h">' + s.o.map((o, k) => o ? '<button type="button" role="radio" class="opt" aria-checked="' + (T.a[s.id] === 'ABCD'[k]) + '" data-k="' + 'ABCD'[k] + '"><b>' + 'ABCD'[k] + '</b><span>' + esc(o) + '</span></button>' : '').join('') + '</div>' +
       '<div class="tqnav"><button type="button" class="btn soft" id="tq-back"' + (T.i ? '' : ' disabled') + '>← Back</button><button type="button" class="btn" id="tq-next"' + (T.a[s.id] ? '' : ' disabled') + '>' + (last ? 'Finish' : 'Next →') + '</button></div>' +
       '<a href="#/me" class="sm muted" style="align-self:center">Leave the test (answers are not saved)</a></section>', 'me');
@@ -93,7 +93,7 @@ window.STAR_MORE = function (X) {
         const pass = r.level === 'Know';
         S.set('pg-me', '');
         X.view('<section class="sec" style="text-align:center;align-items:center"><div class="disp" style="font-size:40px;color:var(--brand)">' + (pass ? '★' : '…') + '</div>' +
-          '<h1 class="big" style="font-size:26px">' + (pass ? 'Section done: Know level' : 'Not yet') + '</h1><p style="margin:0">' + r.correct + ' of ' + r.total + ' correct.</p>' +
+          '<h1 class="big" style="font-size:28px">' + (pass ? 'Section done: Know level' : 'Not yet') + '</h1><p style="margin:0">' + r.correct + ' of ' + r.total + ' correct.</p>' +
           '<p class="muted" style="margin:0;max-width:44ch">' + (pass ? 'This shows on your profile as Know (tested).' : 'You can try this section again from ' + day(r.retakeOn) + '. Your suggested trainings will help.') + '</p>' +
           '<a class="btn" href="#/me">Back to My page</a></section>', 'me');
         T = null;
@@ -110,10 +110,10 @@ window.STAR_MORE = function (X) {
     const list = all.filter((p) => (!teamCentre || p.centres.includes(teamCentre)) && (!q || (p.name + ' ' + p.email).toLowerCase().includes(q)));
     const gaps = TEAM.domains.map((d, i) => [d, list.filter((p) => p.levels[i] !== 'Know').length]).sort((a, b) => b[1] - a[1]).filter((x) => x[1]).slice(0, 2);
     const title = TEAM.role === 'L&D' ? 'All teachers' : TEAM.role === 'Leader' ? 'My team' : 'My centre';
-    let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:26px">' + title + '</h1>' +
+    let h = '<section style="display:flex;flex-direction:column;gap:12px"><h1 class="big" style="font-size:28px">' + title + '</h1>' +
       '<div class="tfilter">' + (centres.length > 1 ? '<div class="chips"><button type="button" class="chip' + (teamCentre ? '' : ' on') + '" data-c="">All centres</button>' + centres.map((c) => '<button type="button" class="chip' + (teamCentre === c ? ' on' : '') + '" data-c="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' : '') +
       '<label class="srch"><span class="sr">Find a teacher</span><input id="tq" type="search" placeholder="Find a teacher" value="' + esc(teamQ) + '" style="width:100%;min-height:48px;border-radius:99px;border:1.5px solid var(--line);padding:0 18px;background:var(--card)"></label></div>' +
-      (gaps.length && list.length ? '<div class="card" style="background:var(--deep);color:var(--deep-t)"><h2 class="lbl" style="color:var(--deep-sub)">Biggest gaps</h2><p class="disp" style="margin:0;font-size:17px;font-weight:600">' +
+      (gaps.length && list.length ? '<div class="card" style="background:var(--deep);color:var(--deep-t)"><h2 class="lbl" style="color:var(--deep-sub)">Biggest gaps</h2><p class="disp" style="margin:0;font-size:16px;font-weight:700">' +
         gaps.map((g) => esc(g[0][0] + ' ' + g[0][1])).join(' and ') + '</p><p class="sm" style="margin:0;color:var(--deep-sub)">' + gaps[0][1] + ' of ' + list.length + ' teachers are not at Know yet in ' + esc(gaps[0][0][0]) + '.</p></div>' : '') +
       '<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2 class="lbl">' + list.length + ' teacher' + (list.length === 1 ? '' : 's') + '</h2><span class="sm muted">D01 → D08</span></div>' +
       (list.length ? '<div class="people">' + list.map((p) => '<a class="person" href="#/person/' + encodeURIComponent(p.email) + '"><span class="pav">' + esc(initials(p.name || p.email)) + '</span>' +
@@ -132,7 +132,7 @@ window.STAR_MORE = function (X) {
   function person(email) { return fresh('pg-p-' + email, 'profile', [email], personDraw, 'team', 'Teacher', '#/person/' + encodeURIComponent(email)); }
   function personDraw(p) {
     X.view('<section style="display:flex;flex-direction:column;gap:12px"><a class="btn soft back" href="#/team">← Back</a><div class="mepage">' +
-      '<div class="card"><b style="font-size:18px">' + esc(p.name || p.email) + '</b><span class="sm muted">' + esc(p.email) + '</span><span class="sm">' + esc(p.centres.join(', ') || '—') + ' · last visit ' + ago(p.last) + ' · ' + p.tested + ' of 8 sections tested</span></div>' +
+      '<div class="card"><b style="font-size:20px">' + esc(p.name || p.email) + '</b><span class="sm muted">' + esc(p.email) + '</span><span class="sm">' + esc(p.centres.join(', ') || '—') + ' · last visit ' + ago(p.last) + ' · ' + p.tested + ' of 8 sections tested</span></div>' +
       '<div class="mecols"><div class="mecol"><div class="card"><h2 class="lbl">Levels by domain</h2>' + levelRows(p.domains) + '</div></div>' +
       '<div class="mecol">' + (p.next.length ? '<div class="card"><h2 class="lbl">Suggested next</h2><div class="shelf">' + nextBooks(p.next) + '</div></div>' : '<div class="card"><h2 class="lbl">Suggested next</h2><p class="muted" style="margin:0">Nothing yet. Suggestions appear after the profiling test.</p></div>') + '</div></div>' +
       '</div><p class="sm muted" style="margin:0">Levels only. Scores stay with L&amp;D.</p></section>', 'team');
@@ -159,7 +159,7 @@ window.STAR_MORE = function (X) {
     const q = edQ.toLowerCase();
     const list = ED.trainings.filter((t) => (!edFilter || (edFilter === 'Building' ? t._building : t.Status === edFilter)) &&
       (!q || (t.ID + ' ' + t.Title + ' ' + t.Module + ' ' + t.Group).toLowerCase().includes(q)));
-    X.view('<section class="sec"><div class="edhead"><h1 class="big" style="font-size:26px">Editor</h1><a class="btn" href="#/edit/trainings/new">+ Add training</a></div>' + edTabs() +
+    X.view('<section class="sec"><div class="edhead"><h1 class="big" style="font-size:28px">Editor</h1><a class="btn" href="#/edit/trainings/new">+ Add training</a></div>' + edTabs() +
       '<div class="chips">' + ['', 'Live', 'Placeholder', 'Retired', 'Building'].map((f) => '<button type="button" class="chip' + (edFilter === f ? ' on' : '') + '" data-f="' + f + '">' + (f || 'All') + '</button>').join('') + '</div>' +
       '<input id="edq" type="search" class="edin" placeholder="Search ID, title or module" value="' + esc(edQ) + '" aria-label="Search trainings">' +
       '<div class="edlist">' + list.map((t) => '<a class="edrow" href="#/edit/trainings/' + encodeURIComponent(t.ID) + '"><span class="code">' + esc(t.ID) + '</span><span><b>' + esc(t.Title) + '</b><br><span class="sm muted">' +
@@ -180,7 +180,7 @@ window.STAR_MORE = function (X) {
     const mods = [['', 'Other (no module)']].concat(ED.modules.map((m) => [m.Code, m.Code + ' · ' + m.Title]));
     const foCodes = Object.keys(X.CAT().fo || {});
     let h = '<section class="sec"><div class="edhead"><a class="btn soft back" href="#/edit">← Trainings</a>' + (isNew ? '' : statusPill(t)) + '</div>' +
-      '<h1 class="big" style="font-size:24px">' + (isNew ? 'Add a training' : esc(t.ID) + ' · ' + esc(t.Title)) + '</h1>' +
+      '<h1 class="big" style="font-size:28px">' + (isNew ? 'Add a training' : esc(t.ID) + ' · ' + esc(t.Title)) + '</h1>' +
       (isNew ? '' : '<p class="sm muted" style="margin:0">Library copy: ' + (t._building ? 'building now…' : t._ready ? esc(t.Slides || '') + (/^\d+$/.test(t.Slides) ? ' slides' : '') + ' ready' : 'none yet') + (t._liveSoon ? ' · goes Live when the copy is ready' : '') + ' · updated ' + esc(t['Last updated'] || '—') + '</p>') +
       '<div class="edform">' +
       fld('Module', sel('f-Module', t.Module, mods), 'The new ID is the module code plus the next number, e.g. S2-22-5.') +
@@ -226,7 +226,7 @@ window.STAR_MORE = function (X) {
   function edModules() {
     const q = edQ.toLowerCase();
     const list = ED.modules.filter((m) => !q || (m.Code + ' ' + m.Title + ' ' + m.Stage).toLowerCase().includes(q));
-    X.view('<section class="sec"><h1 class="big" style="font-size:26px">Editor</h1>' + edTabs() +
+    X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +
       '<input id="edq" type="search" class="edin" placeholder="Search code or title" value="' + esc(edQ) + '" aria-label="Search modules">' +
       '<div class="edlist">' + list.map((m) => '<a class="edrow" href="#/edit/modules/' + encodeURIComponent(m.Code) + '"><span class="code">' + esc(m.Code) + '</span><span><b>' + esc(m.Title) + '</b><br><span class="sm muted">' +
         esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '—') + ' · ' + (m['Library access'] || 'access not set') + (m.Facilitator ? ' · ' + m.Facilitator : '')) + '</span></span><span class="st' + (X.readyIn(m.Code) ? '' : ' soon') + '">' + X.readyIn(m.Code) + ' ready</span></a>').join('') + '</div></section>', 'edit');
@@ -236,7 +236,7 @@ window.STAR_MORE = function (X) {
     const m = ED.modules.find((x) => x.Code === code);
     if (!m) return X.view('<section class="sec"><p>Not found.</p><a class="btn" href="#/edit/modules">Back</a></section>', 'edit');
     const trs = ED.trainings.filter((t) => t.Module === code);
-    X.view('<section class="sec"><a class="btn soft back" href="#/edit/modules">← Modules</a><h1 class="big" style="font-size:24px">' + esc(m.Code) + ' · ' + esc(m.Title) + '</h1>' +
+    X.view('<section class="sec"><a class="btn soft back" href="#/edit/modules">← Modules</a><h1 class="big" style="font-size:28px">' + esc(m.Code) + ' · ' + esc(m.Title) + '</h1>' +
       '<p class="sm muted" style="margin:0">' + esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '')) + '. Title, hours, deliverable and skills come from the module catalogue.</p><div class="edform">' +
       fld('Facilitator', inp('m-Facilitator', m.Facilitator, 'Name')) +
       fld('Facilitator kit / materials link', inp('m-Materials link', m['Materials link'], 'https://drive.google.com/…')) +
@@ -256,7 +256,7 @@ window.STAR_MORE = function (X) {
   }
   async function edQuestions() {
     let qs; try { qs = await X.api('edQuestions', []); } catch (e) { return failed('edit', e); }
-    X.view('<section class="sec"><h1 class="big" style="font-size:26px">Editor</h1>' + edTabs() +
+    X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +
       '<p class="sm muted" style="margin:0">Unanswered first. Everyone sees the answers in the training.</p><div class="edlist">' +
       (qs.length ? qs.map((q) => '<div class="qcard"><div class="sm muted">' + esc(q.id + ' · ' + q.title) + (q.slide ? ' · slide ' + q.slide : '') + (q.at ? ' · ' + day(q.at) : '') + (q.hidden ? ' · hidden' : '') + '</div>' +
         '<p style="margin:4px 0 8px">' + esc(q.text) + '</p><textarea rows="2" data-row="' + q.row + '" aria-label="Answer">' + esc(q.answer) + '</textarea>' +

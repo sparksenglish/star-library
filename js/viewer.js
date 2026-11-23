@@ -245,7 +245,7 @@
     const list = QS.map((q) => '<div class="qa"><div class="meta">' + (q.slide ? 'Slide ' + q.slide + ' · ' : '') + (q.at ? new Date(q.at).toLocaleDateString() : '') + (q.mine ? ' · You' : '') + '</div><div>' + esc(q.text) + '</div>' +
       (q.answer ? '<div class="ans"><b>L&amp;D answer</b><br>' + esc(q.answer) + '</div>' : '<div class="wait">Waiting for L&amp;D…</div>') + '</div>').join('');
     P.innerHTML = '<h3>Questions</h3><p class="hint">Ask L&amp;D about this training. Everyone can see the answers.</p>' +
-      '<div class="ask"><label for="q-text" style="font-weight:600">Your question</label><textarea id="q-text" maxlength="1000" placeholder="What do I do if…"></textarea>' +
+      '<div class="ask"><label for="q-text" style="font-weight:700">Your question</label><textarea id="q-text" maxlength="1000" placeholder="What do I do if…"></textarea>' +
       (cur.n ? '<div class="row2"><label><input type="checkbox" id="q-slide" checked> About slide ' + pg + '</label></div>' : '') +
       '<div class="row2"><button type="button" class="btn" id="q-send">Send question</button></div><p class="err" id="q-err" hidden></p></div>' +
       '<div style="margin-top:12px">' + (list || '<p class="hint">No questions yet. Be the first!</p>') + '</div>';

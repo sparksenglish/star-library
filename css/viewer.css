@@ -5,14 +5,14 @@
 .dk-top{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .dk-head{flex:1;min-width:0}
 .dk-head small{font-size:12px;font-weight:700;color:var(--brand)}
-.dk-head h2{margin:2px 0 0;font:600 clamp(16px,2.2vw,22px)/1.2 'Montserrat Alternates',sans-serif}
+.dk-head h2{margin:2px 0 0;font:800 clamp(16px,2.2vw,22px)/1.2 var(--font)}
 .dk-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
-.dk-x{border:0;background:var(--panel2);border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;flex:none;color:var(--ink)}
+.dk-x{border:0;background:var(--panel2);border-radius:50%;width:44px;height:44px;font-size:20px;cursor:pointer;flex:none;color:var(--ink)}
 .dk-acts{display:flex;gap:8px;position:relative}
 .dk-lk{position:relative;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--ink);background:none;color:var(--ink);cursor:pointer;display:grid;place-items:center}
 .dk-lk svg{width:20px;height:20px}
 .dk-lk[aria-pressed="true"],.dk-lk[aria-expanded="true"]{background:var(--ink);color:var(--panel)}
-.dk-lk i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:99px;background:var(--btn);color:var(--btn-t);font:700 11px/20px 'Poppins',sans-serif;font-style:normal;text-align:center;padding:0 5px}
+.dk-lk i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:99px;background:var(--btn);color:var(--btn-t);font:700 12px/20px var(--font);font-style:normal;text-align:center;padding:0 5px}
 .dk-pop{position:absolute;z-index:5;top:calc(100% + 8px);right:0;width:max-content;max-width:min(300px,80vw);background:var(--panel);border-radius:16px;box-shadow:0 14px 34px #0004;padding:8px;display:flex;flex-direction:column;gap:6px}
 .dk-vid,.dk-lnk{font-weight:600;font-size:14px;text-decoration:none;border-radius:99px;padding:9px 14px;display:inline-flex;align-items:center;gap:6px;min-height:40px}
 .dk-vid{background:#E32D2D;color:#fff}
@@ -20,18 +20,18 @@
 .dk-body{flex:1;min-height:0;display:flex}
 .dk-stage{flex:1;min-width:0;position:relative;display:flex;align-items:center;justify-content:center;padding:14px 64px;background:var(--panel2);overflow:hidden}
 .dk-stage .base{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 8px 24px #0003;background:#fff;position:relative;z-index:1}
-.dk-arrow{position:absolute;z-index:2;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:0;background:var(--ink);color:var(--panel);font-size:26px;line-height:1;cursor:pointer;box-shadow:0 4px 12px #0003}
+.dk-arrow{position:absolute;z-index:2;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:0;background:var(--ink);color:var(--panel);font-size:28px;line-height:1;cursor:pointer;box-shadow:0 4px 12px #0003}
 .dk-arrow:disabled{opacity:.25;cursor:default}
 .dk-arrow.l{left:10px}.dk-arrow.r{right:10px}
 .dk-stage.wait::after{content:'Loading…';position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--panel);border-radius:99px;padding:6px 16px;font-size:14px;color:var(--muted);box-shadow:0 4px 12px #0002}
 .dk-stage.bad::after{content:'This slide did not load. Tap an arrow to try again.';position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--panel);border-radius:14px;padding:8px 16px;font-size:14px;color:var(--err);text-align:center}
 .dk-panel{width:min(360px,40%);border-left:1px solid var(--line);overflow:auto;padding:14px 16px;font-size:14px;line-height:1.55}
-.dk-panel h3{margin:0 0 8px;font:600 17px 'Montserrat Alternates',sans-serif}
-.dk-panel .hint{color:var(--muted);font-style:italic;margin:0 0 10px;font-size:13px}
+.dk-panel h3{margin:0 0 8px;font:600 16px var(--font)}
+.dk-panel .hint{color:var(--muted);font-style:italic;margin:0 0 10px;font-size:14px}
 .dk-panel .note{white-space:pre-line}
 .dk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
 .dk-bar .sp{flex:1}
-.dk-btn{min-height:44px;padding:0 14px;border-radius:99px;border:1.5px solid var(--ink);background:none;color:var(--ink);font:500 14px 'Poppins',sans-serif;cursor:pointer}
+.dk-btn{min-height:44px;padding:0 14px;border-radius:99px;border:1.5px solid var(--ink);background:none;color:var(--ink);font:500 14px var(--font);cursor:pointer}
 .dk-btn[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .dk-btn.done-off{background:var(--btn);border-color:transparent;color:var(--btn-t)}
 .dk-jump{display:flex;align-items:center;gap:6px;font-size:14px}
@@ -44,19 +44,19 @@
 .dk-empty{max-width:440px;text-align:center;padding:10px}
 .dk-empty .big{width:88px;height:100px;margin:0 auto 8px}
 .dk-empty .big svg{width:100%;height:100%}
-.dk-empty h3{margin:0 0 6px;font:600 22px 'Montserrat Alternates',sans-serif}
+.dk-empty h3{margin:0 0 6px;font:800 20px var(--font)}
 .dk-empty p{margin:0 0 14px;color:var(--muted);line-height:1.5}
 .dk-end{position:relative;z-index:2;background:var(--panel);border-radius:22px;padding:22px 20px 18px;max-width:520px;width:100%;text-align:center;box-shadow:0 10px 30px #0003;max-height:100%;overflow:auto}
-.dk-end .yay{font:700 34px/1 'Montserrat Alternates',sans-serif;color:var(--brand)}
-.dk-end h3{margin:6px 0 4px;font:600 24px 'Montserrat Alternates',sans-serif}
+.dk-end .yay{font:800 34px/1 var(--font);color:var(--brand)}
+.dk-end h3{margin:6px 0 4px;font:800 28px var(--font)}
 .dk-end p{margin:0 0 14px;color:var(--muted);line-height:1.5}
-.dk-end h4{margin:0 0 10px;font:600 15px 'Montserrat Alternates',sans-serif;color:var(--brand)}
+.dk-end h4{margin:0 0 10px;font:600 16px var(--font);color:var(--brand)}
 .dk-end .recs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;text-align:left}
 .dk-end .row2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 .qa{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:0 0 10px}
 .qa .meta{font-size:12px;color:var(--muted)}
 .qa .ans{margin-top:8px;background:var(--panel2);border-radius:10px;padding:8px 10px}
-.qa .wait{margin-top:6px;font-style:italic;color:var(--muted);font-size:13px}
+.qa .wait{margin-top:6px;font-style:italic;color:var(--muted);font-size:14px}
 .ask textarea{width:100%;min-height:76px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);padding:8px 10px;resize:vertical}
 .ask .row2{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
 .dk .err{color:var(--err);font-size:14px;margin:6px 0 0}
@@ -83,7 +83,7 @@
 #deck.max .dk-jump,#deck:fullscreen .dk-jump{color:#fff}
 #deck.max .dk-panel,#deck:fullscreen .dk-panel{position:absolute;z-index:3;top:66px;right:14px;bottom:78px;width:min(360px,calc(100% - 28px));border:0;border-radius:18px;background:color-mix(in srgb,var(--panel) 92%,transparent)}
 #deck.max .dk-grid,#deck:fullscreen .dk-grid{position:absolute;z-index:2;inset:0 0 72px 0}
-.dk-fsx{display:none;position:absolute;z-index:4;top:10px;right:10px;width:44px;height:44px;border-radius:50%;border:0;background:#ffffff33;color:#fff;font-size:18px;cursor:pointer}
+.dk-fsx{display:none;position:absolute;z-index:4;top:10px;right:10px;width:44px;height:44px;border-radius:50%;border:0;background:#ffffff33;color:#fff;font-size:20px;cursor:pointer}
 #deck.max .dk-fsx,#deck:fullscreen .dk-fsx{display:block}
 @media (orientation:portrait) and (max-width:760px){#deck.max .dk,#deck:fullscreen .dk{position:absolute;top:50%;left:50%;width:100vh;width:100dvh;height:100vw;height:100dvw;transform:translate(-50%,-50%) rotate(90deg)}}
 @media (max-width:760px){

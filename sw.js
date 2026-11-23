@@ -1,8 +1,9 @@
 // STAR Library service worker. Scope: the folder it is served from (/star-library/ or /star-library/staging/).
 // The app files are kept for offline start; the Apps Script API (another site) is never cached here.
-const CACHE = 'starlib-production-fa4e179';
+const CACHE = 'starlib-production-5756523';
 const SHELL = ['./', 'index.html', 'config.js', 'css/app.css', 'css/viewer.css', 'js/api.js', 'js/app.js', 'js/viewer.js', 'js/more.js',
-  'manifest.webmanifest', 'img/icon-192.png', 'img/favicon.png', 'img/logo.webp', 'img/logo-forest.webp'];
+  'manifest.webmanifest', 'img/icon-192.png', 'img/favicon.png', 'img/logo.webp', 'img/logo-forest.webp',
+  'fonts/pjs-400-normal.woff2', 'fonts/pjs-400-italic.woff2', 'fonts/pjs-500-normal.woff2', 'fonts/pjs-700-normal.woff2', 'fonts/pjs-700-italic.woff2', 'fonts/pjs-800-normal.woff2'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

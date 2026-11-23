@@ -260,7 +260,7 @@
         '<span class="bcode">' + esc(f.i) + '</span><span class="tt">' + esc(trTitle(f)) + '</span>' + (f.m ? '<span class="sub">' + esc(f.t) + '</span>' : '') +
         '<span class="go">' + (f.k ? 'Open' : 'Watch') + ' training →</span></span></a>';
     }
-    if (recs.length) h += '<div class="recs"><span class="disp" style="font-weight:600;font-size:15px">Recommended next</span><div class="grid2">' + recs.map(miniCard).join('') + '</div></div>';
+    if (recs.length) h += '<div class="recs"><span class="disp" style="font-weight:700;font-size:16px">Recommended next</span><div class="grid2">' + recs.map(miniCard).join('') + '</div></div>';
     h += '</div></section>';
     h += '<section class="sec" aria-labelledby="cur-h"><h2 class="sec-h u" id="cur-h">The curriculum</h2><div class="shelf stages">' + STAGES.map(stageBook).join('') + '</div></section>';
     if (shelf.length) h += '<section class="sec" aria-labelledby="sh-h"><h2 class="sec-h" id="sh-h">My shelf</h2><div class="shelf">' + shelf.map(trainingBook).join('') + '</div></section>';
@@ -293,11 +293,11 @@
     let h = '<section class="sec" aria-labelledby="st-h">';
     if (g) {
       h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + backBtn('#/s/' + st.s) + '<nav class="crumbs" aria-label="You are here"><a href="#/">Home</a> › <a href="#/s/' + st.s + '">' + esc(stageNo(st.s)) + '</a> › <b>' + esc(g) + '</b></nav></div>' +
-        '<div><h1 class="big" id="st-h" style="font-size:26px">' + esc(g) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(GROUP_NOTE[g] || '') + '</p></div>';
+        '<div><h1 class="big" id="st-h" style="font-size:28px">' + esc(g) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(GROUP_NOTE[g] || '') + '</p></div>';
       const ms = modsIn(st.s, g);
       h += ms.length ? '<div class="shelf" role="list">' + ms.map(moduleBook).join('') + '</div>' : '<p class="muted">No modules here yet.</p>';
     } else {
-      h += tabs + '<div class="vh"><span class="badge" aria-hidden="true">' + glyph(st.s) + '</span><div style="flex:1">' + (st.s === 'OTHER' ? '' : '<span class="sm muted" style="font-weight:600">' + stageNo(st.s) + '</span>') + '<h1 class="big" id="st-h" style="font-size:26px">' + esc(st.n) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(st.w) + '</p></div></div>';
+      h += tabs + '<div class="vh"><span class="badge" aria-hidden="true">' + glyph(st.s) + '</span><div style="flex:1">' + (st.s === 'OTHER' ? '' : '<span class="sm muted" style="font-weight:700">' + stageNo(st.s) + '</span>') + '<h1 class="big" id="st-h" style="font-size:28px">' + esc(st.n) + '</h1><p class="sm muted" style="margin:3px 0 0">' + esc(st.w) + '</p></div></div>';
       if (st.s === 'OTHER') {
         const groups = {};
         OTHER.forEach((t) => { (groups[t.g || 'Other'] = groups[t.g || 'Other'] || []).push(t); });
@@ -328,7 +328,7 @@
       '<div style="display:flex;flex-direction:column;gap:8px"><div class="chips"><span class="tag dark">' + esc(m.c) + '</span>' + (m.y ? '<span class="tag">' + esc(m.y) + '</span>' : '') +
       (sk.length ? '<span class="tag">Depth: ' + esc(sk[0][1][1]) + '</span>' : '') + (m.a ? '<span class="tag">' + (m.a === 'Open' ? 'Open to everyone' : 'Assigned by L&amp;D') + '</span>' : '') + '</div>' +
       '<h1 class="big" id="m-h">' + esc(m.t) + '</h1><p class="sm muted" style="margin:0">' + esc(stageNo(st.s) + ': ' + (st.n || '')) + (m.h ? ' · ' + esc(m.h) + ' h' : '') + (m.o ? ' · owner ' + esc(m.o) : '') + '</p></div>';
-    h += '<div class="mgrid"><div class="mmain"><div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:17px;font-weight:600">Trainings on this shelf · ' + trs.length + '</h2>' +
+    h += '<div class="mgrid"><div class="mmain"><div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:16px;font-weight:700">Trainings on this shelf · ' + trs.length + '</h2>' +
       (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div></div><div class="mside">';
     if (m.d) h += '<div class="box"><h2 class="lbl">You\'ll produce</h2><p style="margin:0;line-height:1.5">' + esc(m.d) + '</p></div>';
     if (m.p.length) h += '<div class="box"><h2 class="lbl">Before this module</h2><div class="chips">' + m.p.map((p) => MOD[p] ? '<a class="pre" href="#/m/' + encodeURIComponent(p) + '"><b>' + esc(p) + '</b> ' + esc(MOD[p].t) + '</a>' : '<span class="pre">' + esc(p) + '</span>').join('') + '</div></div>';
@@ -338,7 +338,7 @@
     const foCodes = [...new Set((m.fo || []).concat(...trs.map((t) => t.fo || [])))].filter((c) => (CAT.fo || {})[c]);
     if (foCodes.length) h += '<div class="box"><h2 class="lbl">Observed in class (FO rubric)</h2>' + foCodes.map((c) => '<div class="sk" style="grid-template-columns:44px 1fr"><span class="code">' + esc(c) + '</span><span>' + esc(CAT.fo[c][2]) + '</span></div>').join('') + '</div>';
     if (m.f || m.m) h += '<div class="box"><h2 class="lbl">Facilitator</h2>' + (m.f ? '<p style="margin:0">' + esc(m.f) + '</p>' : '<p class="muted sm" style="margin:0">To be set by L&amp;D</p>') +
-      (m.m ? '<a href="' + esc(m.m) + '" target="_blank" rel="noopener" style="font-weight:600;font-size:14px;min-height:44px;display:inline-flex;align-items:center">Facilitator kit and materials ↗</a>' : '') + '</div>';
+      (m.m ? '<a href="' + esc(m.m) + '" target="_blank" rel="noopener" style="font-weight:700;font-size:14px;min-height:44px;display:inline-flex;align-items:center">Facilitator kit and materials ↗</a>' : '') + '</div>';
     h += '<p class="sm muted" style="margin:0;line-height:1.5">Marking a training done is for your own tracking. Your profile only changes when L&amp;D signs the module off in STAR LMS.</p></div></div></section>';
     view(h, 'curriculum');
   }
@@ -363,7 +363,7 @@
         if (has((t.i + ' ' + t.t + ' ' + t.d + ' ' + t.g).toLowerCase())) hits.push({ href: '#/t/' + encodeURIComponent(t.i), code: t.i, t: t.t, sub: t.m ? 'Training in ' + t.m : (t.g || 'Other'), n: ready(t) ? 1 : 0 });
       });
       hits = hits.slice(0, 12); hi = 0;
-      RS.innerHTML = hits.length ? hits.map((x, i) => '<a href="' + x.href + '" class="' + (i ? '' : 'on') + '"><span class="code">' + esc(x.code) + '</span><span><b style="font-weight:600;font-size:14px">' + esc(x.t) + '</b><br><span class="sm muted">' + esc(x.sub) + '</span></span><span class="st' + (x.n ? '' : ' soon') + '">' + (x.n ? 'Ready' : 'Soon') + '</span></a>').join('')
+      RS.innerHTML = hits.length ? hits.map((x, i) => '<a href="' + x.href + '" class="' + (i ? '' : 'on') + '"><span class="code">' + esc(x.code) + '</span><span><b style="font-weight:700;font-size:14px">' + esc(x.t) + '</b><br><span class="sm muted">' + esc(x.sub) + '</span></span><span class="st' + (x.n ? '' : ' soon') + '">' + (x.n ? 'Ready' : 'Soon') + '</span></a>').join('')
         : '<div class="none">Nothing found for “' + esc(Q.value.trim()) + '”. Try a shorter word, a code like S2-22, or a skill like D05 J.</div>';
       RS.hidden = false; Q.setAttribute('aria-expanded', 'true');
     };
