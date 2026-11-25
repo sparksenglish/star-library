@@ -210,12 +210,22 @@ window.STAR_MORE = function (X) {
     X.view(h, 'edit');
     const msg = (ok, text) => { $('ed-ok').hidden = !ok; $('ed-err').hidden = ok; $(ok ? 'ed-ok' : 'ed-err').textContent = text; };
     const run = async (B, label, fn) => { B.disabled = true; const t0 = B.textContent; B.textContent = label; try { const r = await fn(); msg(true, r.msg); return r; } catch (e) { msg(false, errText(e)); } finally { B.disabled = false; B.textContent = t0; } };
-    $('ed-save').onclick = () => run($('ed-save'), 'Saving…', async () => {
+    $('ed-save').onclick = () => run($('ed-save'), $('f-src').value.trim() ? 'Saving and building slides… this can take a minute' : 'Saving…', async () => {
       const f = { ID: t.ID };
       ['Module', 'Group', 'Title', 'Type', 'Description', 'Recording', 'Status', 'Format', 'Cover slide', 'Recommended', 'FO items', 'Slide videos', 'Video link', 'Owner', 'Notes'].forEach((k) => { f[k] = $('f-' + k).value; });
       f.Featured = $('f-Featured').checked ? 'Yes' : '';
       f.src = $('f-src').value.trim();
-      const r = await X.api('edSaveTraining', [f]);
+      let r;
+      try { r = await X.api('edSaveTraining', [f]); }
+      catch (e) {
+        // the server may have finished after the app stopped waiting: look before showing an error (no double adds)
+        if (!/SLOW|OFFLINE|NETWORK/.test(e.message || '')) throw e;
+        await edLoad(true);
+        const hit = t.ID ? ED.trainings.find((x) => x.ID === t.ID)
+          : ED.trainings.find((x) => x.Module === f.Module && x.Title.trim().toLowerCase() === f.Title.trim().toLowerCase());
+        if (!hit) throw e;
+        r = { id: hit.ID, msg: 'Saved. ' + (hit._building ? 'Slides are still being prepared. This page updates by itself when they are ready.' : 'The server was slow, but everything is in.') };
+      }
       await edLoad(true); X.refresh();
       setTimeout(() => { location.hash = '#/edit/trainings/' + encodeURIComponent(r.id); setTimeout(() => msg(true, r.msg), 50); }, 0);
       return r;
