@@ -182,13 +182,13 @@
   const GROUP_NOTE = { Know: 'Understand the concept', Plan: 'Design the learning', Teach: 'Deliver and manage', Assess: 'Evaluate and respond',
     'Professional practice': 'Reflect and revisit', 'Parent-facing': 'Trials, checkpoints, PTM', 'Little Sparks': 'Ages 3–6', 'Sparks Kid': 'Ages 7–9',
     'Sparks Teen': 'Ages 10–14', 'Sparks Teen+': 'Ages 15–18', SLSA: 'Leadership and speech' };
-  let MOD = {}, TR = {}, BYMOD = {}, OTHER = [];
+  let MOD = {}, TR = {}, BYMOD = {}, OTHER = [], REFRESH = [];
   function index() {
-    MOD = {}; TR = {}; BYMOD = {}; OTHER = [];
+    MOD = {}; TR = {}; BYMOD = {}; OTHER = []; REFRESH = [];
     (CAT.modules || []).forEach((m) => { MOD[m.c] = m; });
     (CAT.trainings || []).forEach((t) => {
       TR[t.i] = t;
-      if (t.m && MOD[t.m]) (BYMOD[t.m] = BYMOD[t.m] || []).push(t); else OTHER.push(t);
+      if (t.m && MOD[t.m]) { (BYMOD[t.m] = BYMOD[t.m] || []).push(t); if (t.rf) REFRESH.push(t); } else OTHER.push(t);
     });
   }
   const ready = (t) => t.st === 'L' && !!(t.k || t.r);
@@ -214,7 +214,7 @@
 
   const stageBook = (st) => {
     const ms = st.s === 'OTHER' ? [] : modsIn(st.s);
-    const sub = st.s === 'OTHER' ? OTHER.filter(ready).length + ' ready' : ms.length + ' modules';
+    const sub = st.s === 'OTHER' ? OTHER.concat(REFRESH).filter(ready).length + ' ready' : ms.length + ' modules';
     return '<a class="book" href="#/s/' + st.s + '" aria-label="' + esc((st.s === 'OTHER' ? '' : stageNo(st.s) + ': ') + st.n + ', ' + sub) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +
       '<span class="win">' + glyph(st.s) + '</span>' + (st.s === 'OTHER' ? '' : '<span class="bcode">' + stageNo(st.s) + '</span>') + '<span class="tt">' + esc(st.n) + '</span><span class="sub">' + esc(sub) + '</span></span></a>';
   };
@@ -226,7 +226,7 @@
   const trainingBook = (t) => {
     const r = ready(t), cv = coverKey(t);
     return '<a class="book' + (r ? '' : ' soon') + '" href="#/t/' + encodeURIComponent(t.i) + '" aria-label="' + esc(t.i + ' ' + t.t + ', ' + (r ? 'open' : 'coming soon')) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +
-      '<span class="win">' + (cv ? '<img alt="" data-s="' + esc(cv) + '">' : glyph(MOD[t.m] ? MOD[t.m].s : 'OTHER')) + '</span>' +
+      (t.rf ? '<span class="rfb">Refresher</span>' : '') + '<span class="win">' + (cv ? '<img alt="" data-s="' + esc(cv) + '">' : glyph(MOD[t.m] ? MOD[t.m].s : 'OTHER')) + '</span>' +
       '<span class="bcode">' + esc(t.i) + '</span><span class="tt">' + esc(t.t) + '</span><span class="st">' + (r ? (t.k ? 'Open' : 'Watch') + ' →' : 'Coming soon') + '</span></span></a>';
   };
   const folder = (st, g) => {
@@ -302,7 +302,12 @@
         const groups = {};
         OTHER.forEach((t) => { (groups[t.g || 'Other'] = groups[t.g || 'Other'] || []).push(t); });
         const keys = Object.keys(groups).sort();
-        h += keys.length ? keys.map((k) => '<h2 class="lbl" style="margin-top:6px">' + esc(k) + '</h2><div class="shelf">' + groups[k].map(trainingBook).join('') + '</div>').join('') : '<p class="muted">Nothing here yet.</p>';
+        // refreshers stay in their module; here they are also gathered in one place, by module
+        const rmods = [...new Set(REFRESH.map((t) => t.m))].sort();
+        h += keys.map((k) => '<h2 class="lbl" style="margin-top:6px">' + esc(k) + '</h2><div class="shelf">' + groups[k].map(trainingBook).join('') + '</div>').join('');
+        if (rmods.length) h += '<h2 class="sec-h" style="margin-top:10px">Refreshers</h2><p class="sm muted" style="margin:0">Short refreshers for modules you have already done. They are not part of the stage path.</p>' +
+          rmods.map((c) => '<h2 class="lbl" style="margin-top:6px"><a href="#/m/' + encodeURIComponent(c) + '" style="color:inherit">' + esc(c + ' · ' + MOD[c].t) + '</a></h2><div class="shelf">' + REFRESH.filter((t) => t.m === c).map(trainingBook).join('') + '</div>').join('');
+        if (!keys.length && !rmods.length) h += '<p class="muted">Nothing here yet.</p>';
       } else if (st.groups.length) {
         const gs = st.groups.filter((x) => modsIn(st.s, x).length);
         h += '<div class="folders">' + gs.map((x) => folder(st, x)).join('') + '</div>';
@@ -319,7 +324,7 @@
     const m = MOD[code];
     if (!m) return view('<section class="sec"><h1 class="big">Not found</h1><p class="muted">This module is not in the catalogue.</p>' + backBtn('#/', 'Home') + '</section>', 'curriculum');
     const st = stageOf(m.s) || { s: m.s, n: m.s };
-    const trs = BYMOD[m.c] || [];
+    const all = BYMOD[m.c] || [], trs = all.filter((t) => !t.rf), refs = all.filter((t) => t.rf);
     const back = '#/s/' + m.s + (m.g ? '/' + encodeURIComponent(m.g) : '');
     const sk = m.k.map((id) => [id, CAT.skills[id]]).filter((x) => x[1]);
     const dom = sk.length ? sk[0][1][2] : '';
@@ -329,13 +334,16 @@
       (sk.length ? '<span class="tag">Depth: ' + esc(sk[0][1][1]) + '</span>' : '') + (m.a ? '<span class="tag">' + (m.a === 'Open' ? 'Open to everyone' : 'Assigned by L&amp;D') + '</span>' : '') + '</div>' +
       '<h1 class="big" id="m-h">' + esc(m.t) + '</h1><p class="sm muted" style="margin:0">' + esc(stageNo(st.s) + ': ' + (st.n || '')) + (m.h ? ' · ' + esc(m.h) + ' h' : '') + (m.o ? ' · owner ' + esc(m.o) : '') + '</p></div>';
     h += '<div class="mgrid"><div class="mmain"><div style="display:flex;flex-direction:column;gap:6px"><h2 class="disp" style="margin:0;font-size:16px;font-weight:700">Trainings on this shelf · ' + trs.length + '</h2>' +
-      (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div></div><div class="mside">';
+      (trs.length ? '<div class="shelf big" role="list">' + trs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span>' : '<p class="muted" style="margin:0">No trainings yet. L&amp;D is preparing this module.</p>') + '</div>' +
+      (refs.length ? '<div style="display:flex;flex-direction:column;gap:6px;margin-top:14px"><h2 class="disp" style="margin:0;font-size:16px;font-weight:700">Refreshers · ' + refs.length + '</h2>' +
+        '<p class="sm muted" style="margin:0">Extra sessions to refresh this topic. Not part of the stage path.</p><div class="shelf big" role="list">' + refs.map(trainingBook).join('') + '</div><span class="ledge" aria-hidden="true"></span></div>' : '') +
+      '</div><div class="mside">';
     if (m.d) h += '<div class="box"><h2 class="lbl">You\'ll produce</h2><p style="margin:0;line-height:1.5">' + esc(m.d) + '</p></div>';
     if (m.p.length) h += '<div class="box"><h2 class="lbl">Before this module</h2><div class="chips">' + m.p.map((p) => MOD[p] ? '<a class="pre" href="#/m/' + encodeURIComponent(p) + '"><b>' + esc(p) + '</b> ' + esc(MOD[p].t) + '</a>' : '<span class="pre">' + esc(p) + '</span>').join('') + '</div></div>';
     if (sk.length) h += '<div class="box" style="gap:0"><h2 class="lbl" style="margin-bottom:6px">Skills' + (dom ? ' · ' + esc(dom) : '') + '</h2>' +
       sk.map((x) => '<div class="sk"><span class="code">' + esc(x[0]) + '</span><span>' + esc(x[1][0]) + '</span><span class="tag">' + esc(x[1][1]) + '</span></div>').join('') + '</div>';
     else if (m.x) h += '<div class="box"><h2 class="lbl">SETDT coverage</h2><p style="margin:0;font-size:14px;line-height:1.5">' + esc(m.x) + '</p></div>';
-    const foCodes = [...new Set((m.fo || []).concat(...trs.map((t) => t.fo || [])))].filter((c) => (CAT.fo || {})[c]);
+    const foCodes = [...new Set((m.fo || []).concat(...all.map((t) => t.fo || [])))].filter((c) => (CAT.fo || {})[c]);
     if (foCodes.length) h += '<div class="box"><h2 class="lbl">Observed in class (FO rubric)</h2>' + foCodes.map((c) => '<div class="sk" style="grid-template-columns:44px 1fr"><span class="code">' + esc(c) + '</span><span>' + esc(CAT.fo[c][2]) + '</span></div>').join('') + '</div>';
     if (m.f || m.m) h += '<div class="box"><h2 class="lbl">Facilitator</h2>' + (m.f ? '<p style="margin:0">' + esc(m.f) + '</p>' : '<p class="muted sm" style="margin:0">To be set by L&amp;D</p>') +
       (m.m ? '<a href="' + esc(m.m) + '" target="_blank" rel="noopener" style="font-weight:700;font-size:14px;min-height:44px;display:inline-flex;align-items:center">Facilitator kit and materials ↗</a>' : '') + '</div>';

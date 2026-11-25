@@ -163,7 +163,7 @@ window.STAR_MORE = function (X) {
       '<div class="chips">' + ['', 'Live', 'Placeholder', 'Retired', 'Building'].map((f) => '<button type="button" class="chip' + (edFilter === f ? ' on' : '') + '" data-f="' + f + '">' + (f || 'All') + '</button>').join('') + '</div>' +
       '<input id="edq" type="search" class="edin" placeholder="Search ID, title or module" value="' + esc(edQ) + '" aria-label="Search trainings">' +
       '<div class="edlist">' + list.map((t) => '<a class="edrow" href="#/edit/trainings/' + encodeURIComponent(t.ID) + '"><span class="code">' + esc(t.ID) + '</span><span><b>' + esc(t.Title) + '</b><br><span class="sm muted">' +
-        esc(t.Module ? t.Module + ' · ' + ((X.MOD()[t.Module] || {}).t || '') : t.Group || 'Other') + '</span></span>' + statusPill(t) + '</a>').join('') + (list.length ? '' : '<p class="muted">No trainings match.</p>') + '</div></section>', 'edit');
+        esc((t.Type === 'Refresher' ? 'Refresher · ' : '') + (t.Module ? t.Module + ' · ' + ((X.MOD()[t.Module] || {}).t || '') : t.Group || 'Other')) + '</span></span>' + statusPill(t) + '</a>').join('') + (list.length ? '' : '<p class="muted">No trainings match.</p>') + '</div></section>', 'edit');
     document.querySelectorAll('[data-f]').forEach((b) => { b.onclick = () => { edFilter = b.dataset.f; edTrainings(); }; });
     const I = $('edq'); I.oninput = () => { edQ = I.value; const pos = I.selectionStart; edTrainings(); const J = $('edq'); J.focus(); J.setSelectionRange(pos, pos); };
   }
@@ -186,6 +186,8 @@ window.STAR_MORE = function (X) {
       fld('Module', sel('f-Module', t.Module, mods), 'The new ID is the module code plus the next number, e.g. S2-22-5.') +
       fld('Group (Other trainings only)', inp('f-Group', t.Group, 'e.g. Soft skills')) +
       fld('Title', inp('f-Title', t.Title)) +
+      fld('Type', sel('f-Type', t.Type === 'Refresher' ? 'Refresher' : 'Core', [['Core', 'Core (part of the module)'], ['Refresher', 'Refresher (extra, not part of the stage path)']]),
+        'A refresher stays in its module with a Refresher badge, is also listed in Other trainings, and is never in Suggested next.') +
       fld('Description', area('f-Description', t.Description, 3)) +
       fld('Material file', inp('f-src', '', t['Source file (L&D only)'] ? 'Paste a new Drive link to replace the file' : 'Paste a Google Drive link (Slides, PowerPoint, Doc, PDF…)'),
         t['Source file (L&D only)'] ? 'Current file: <a href="' + esc(t['Source file (L&D only)']) + '" target="_blank" rel="noopener">open ↗</a>. Saving a new link builds a new library copy.' : 'Saving builds the library copy teachers see.') +
@@ -210,7 +212,7 @@ window.STAR_MORE = function (X) {
     const run = async (B, label, fn) => { B.disabled = true; const t0 = B.textContent; B.textContent = label; try { const r = await fn(); msg(true, r.msg); return r; } catch (e) { msg(false, errText(e)); } finally { B.disabled = false; B.textContent = t0; } };
     $('ed-save').onclick = () => run($('ed-save'), 'Saving…', async () => {
       const f = { ID: t.ID };
-      ['Module', 'Group', 'Title', 'Description', 'Recording', 'Status', 'Format', 'Cover slide', 'Recommended', 'FO items', 'Slide videos', 'Video link', 'Owner', 'Notes'].forEach((k) => { f[k] = $('f-' + k).value; });
+      ['Module', 'Group', 'Title', 'Type', 'Description', 'Recording', 'Status', 'Format', 'Cover slide', 'Recommended', 'FO items', 'Slide videos', 'Video link', 'Owner', 'Notes'].forEach((k) => { f[k] = $('f-' + k).value; });
       f.Featured = $('f-Featured').checked ? 'Yes' : '';
       f.src = $('f-src').value.trim();
       const r = await X.api('edSaveTraining', [f]);
@@ -226,18 +228,65 @@ window.STAR_MORE = function (X) {
   function edModules() {
     const q = edQ.toLowerCase();
     const list = ED.modules.filter((m) => !q || (m.Code + ' ' + m.Title + ' ' + m.Stage).toLowerCase().includes(q));
-    X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +
+    X.view('<section class="sec"><div class="edhead"><h1 class="big" style="font-size:28px">Editor</h1><a class="btn" href="#/edit/modules/new">+ New module</a></div>' + edTabs() +
       '<input id="edq" type="search" class="edin" placeholder="Search code or title" value="' + esc(edQ) + '" aria-label="Search modules">' +
       '<div class="edlist">' + list.map((m) => '<a class="edrow" href="#/edit/modules/' + encodeURIComponent(m.Code) + '"><span class="code">' + esc(m.Code) + '</span><span><b>' + esc(m.Title) + '</b><br><span class="sm muted">' +
-        esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '—') + ' · ' + (m['Library access'] || 'access not set') + (m.Facilitator ? ' · ' + m.Facilitator : '')) + '</span></span><span class="st' + (X.readyIn(m.Code) ? '' : ' soon') + '">' + X.readyIn(m.Code) + ' ready</span></a>').join('') + '</div></section>', 'edit');
+        esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m._topic || m.Type || '—') + ' · ' + (m['Library access'] || 'access not set') + (m.Facilitator ? ' · ' + m.Facilitator : '') + (m._own ? ' · added by L&D' : '')) + '</span></span><span class="st' + (X.readyIn(m.Code) ? '' : ' soon') + '">' + X.readyIn(m.Code) + ' ready</span></a>').join('') + '</div></section>', 'edit');
     const I = $('edq'); I.oninput = () => { edQ = I.value; const pos = I.selectionStart; edModules(); const J = $('edq'); J.focus(); J.setSelectionRange(pos, pos); };
   }
+  const TOPICS = { S2: ['Know', 'Plan', 'Teach', 'Assess'], S3: ['Parent-facing', 'Little Sparks', 'Sparks Kid', 'Sparks Teen', 'Sparks Teen+', 'SLSA'] };
+  const PREFIX = { S0: 'S0-', S1: 'NH', S2: 'S2-', S4: 'X', 'Parent-facing': 'S3-P', 'Little Sparks': 'LS-', 'Sparks Kid': 'SK-', 'Sparks Teen': 'TN-', 'Sparks Teen+': 'TP-', SLSA: 'SL-' };
+  function nextCode(stage, topic) {   // same rule as the server
+    const pre = PREFIX[stage === 'S3' ? topic : stage] || stage + '-';
+    let max = 0;
+    ED.modules.forEach((m) => { const r = m.Code.indexOf(pre) === 0 ? m.Code.slice(pre.length) : ''; if (/^\d+$/.test(r)) max = Math.max(max, +r); });
+    return pre + String(max + 1).padStart(stage === 'S2' ? 2 : 1, '0');
+  }
+  function edNewModule() {
+    const stages = [['S0', 'Stage 0 · Find Your Sparks'], ['S1', 'Stage 1 · Onboarding'], ['S2', 'Stage 2 · Core Readiness'], ['S3', 'Stage 3 · Programme & Parents'], ['S4', 'Stage 4 · Development']];
+    X.view('<section class="sec"><a class="btn soft back" href="#/edit/modules">← Modules</a><h1 class="big" style="font-size:28px">New module</h1>' +
+      '<p class="sm muted" style="margin:0">For a module that is not in the module catalogue. It shows in the Curriculum as "Coming soon" until it has a Live training.</p><div class="edform">' +
+      fld('Stage', sel('n-Stage', 'S2', stages)) +
+      '<div id="n-topicbox">' + fld('Topic', sel('n-Topic', '', [])) + '</div>' +
+      fld('Module name', inp('n-Title', '', 'e.g. Storytelling in class')) +
+      fld('Code', inp('n-Code', ''), '<span id="n-codehint"></span>') +
+      fld('Hours', inp('n-Hours (as written)', '', 'e.g. 2')) +
+      fld('You\'ll produce (deliverable)', area('n-Deliverable', '', 2)) +
+      fld('Library access', sel('n-Library access', '', [['', '(not set)'], 'Open', 'Assigned']), 'Open = anyone can self-learn. Assigned = L&amp;D assigns it.') +
+      fld('Facilitator', inp('n-Facilitator', '', 'Name')) +
+      fld('Facilitator kit / materials link', inp('n-Materials link', '', 'https://drive.google.com/…')) +
+      fld('FO rubric items', inp('n-FO items', '', 'e.g. B11, B12')) +
+      fld('Tags', inp('n-Tags', '')) +
+      '</div><p class="gerr" id="ed-err" role="alert" hidden></p><p class="gok" id="ed-ok" role="status" hidden></p>' +
+      '<div class="edbtns"><button type="button" class="btn" id="n-save">Add module</button></div></section>', 'edit');
+    const topicSync = () => {
+      const st = $('n-Stage').value, ts = TOPICS[st] || [];
+      $('n-topicbox').hidden = !ts.length;
+      const cur = $('n-Topic').value;
+      $('n-Topic').innerHTML = ts.map((x) => '<option' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>').join('');
+      const nc = nextCode(st, $('n-Topic').value);
+      $('n-Code').placeholder = nc; $('n-codehint').textContent = 'Leave empty to use ' + nc + '.';
+    };
+    $('n-Stage').onchange = topicSync; $('n-Topic').onchange = topicSync; topicSync();
+    $('n-save').onclick = async () => {
+      const B = $('n-save'); B.disabled = true; B.textContent = 'Adding…';
+      const f = { Topic: $('n-topicbox').hidden ? '' : $('n-Topic').value };
+      ['Stage', 'Title', 'Code', 'Hours (as written)', 'Deliverable', 'Library access', 'Facilitator', 'Materials link', 'FO items', 'Tags'].forEach((k) => { f[k] = $('n-' + k).value; });
+      try {
+        const r = await X.api('edAddModule', [f]); await edLoad(true); X.refresh();
+        location.hash = '#/edit/modules/' + encodeURIComponent(r.code); setTimeout(() => { if ($('ed-ok')) { $('ed-ok').textContent = r.msg; $('ed-ok').hidden = false; } }, 80);
+      } catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; $('ed-ok').hidden = true; B.disabled = false; B.textContent = 'Add module'; }
+    };
+  }
   function edModule(code) {
+    if (code === 'new') return edNewModule();
     const m = ED.modules.find((x) => x.Code === code);
+
     if (!m) return X.view('<section class="sec"><p>Not found.</p><a class="btn" href="#/edit/modules">Back</a></section>', 'edit');
     const trs = ED.trainings.filter((t) => t.Module === code);
     X.view('<section class="sec"><a class="btn soft back" href="#/edit/modules">← Modules</a><h1 class="big" style="font-size:28px">' + esc(m.Code) + ' · ' + esc(m.Title) + '</h1>' +
-      '<p class="sm muted" style="margin:0">' + esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '')) + '. Title, hours, deliverable and skills come from the module catalogue.</p><div class="edform">' +
+      '<p class="sm muted" style="margin:0">' + esc(String(m.Stage).replace(/^S(\d)$/, 'Stage $1') + ' · ' + (m.Type || '')) + (m._own ? '. Added by L&amp;D.' : '. Name, hours, deliverable and skills come from the module catalogue.') + '</p><div class="edform">' +
+      (m._own ? fld('Module name', inp('m-Title', m.Title)) + fld('Hours', inp('m-Hours (as written)', m['Hours (as written)'], 'e.g. 2')) + fld('You\'ll produce (deliverable)', area('m-Deliverable', m.Deliverable, 2)) : '') +
       fld('Facilitator', inp('m-Facilitator', m.Facilitator, 'Name')) +
       fld('Facilitator kit / materials link', inp('m-Materials link', m['Materials link'], 'https://drive.google.com/…')) +
       fld('Library access', sel('m-Library access', m['Library access'], [['', '(not set)'], 'Open', 'Assigned']), 'Open = anyone can self-learn. Assigned = L&amp;D assigns it.') +
@@ -245,10 +294,10 @@ window.STAR_MORE = function (X) {
       fld('Tags', inp('m-Tags', m.Tags)) +
       '</div><p class="gerr" id="ed-err" role="alert" hidden></p><p class="gok" id="ed-ok" role="status" hidden></p>' +
       '<div class="edbtns"><button type="button" class="btn" id="m-save">Save</button><a class="btn soft" href="#/edit/trainings/new?m=' + encodeURIComponent(code) + '">+ Add a training to this module</a></div>' +
-      '<h2 class="lbl" style="margin-top:8px">Trainings · ' + trs.length + '</h2><div class="edlist">' + trs.map((t) => '<a class="edrow" href="#/edit/trainings/' + encodeURIComponent(t.ID) + '"><span class="code">' + esc(t.ID) + '</span><span><b>' + esc(t.Title) + '</b></span>' + statusPill(t) + '</a>').join('') + '</div></section>', 'edit');
+      '<h2 class="lbl" style="margin-top:8px">Trainings · ' + trs.length + '</h2><div class="edlist">' + trs.map((t) => '<a class="edrow" href="#/edit/trainings/' + encodeURIComponent(t.ID) + '"><span class="code">' + esc(t.ID) + '</span><span><b>' + esc(t.Title) + '</b>' + (t.Type === 'Refresher' ? ' <span class="sm muted">· Refresher</span>' : '') + '</span>' + statusPill(t) + '</a>').join('') + '</div></section>', 'edit');
     $('m-save').onclick = async () => {
       const B = $('m-save'); B.disabled = true;
-      const f = {}; ['Facilitator', 'Materials link', 'Library access', 'FO items', 'Tags'].forEach((k) => { f[k] = $('m-' + k).value; });
+      const f = {}; ['Facilitator', 'Materials link', 'Library access', 'FO items', 'Tags'].concat(m._own ? ['Title', 'Hours (as written)', 'Deliverable'] : []).forEach((k) => { f[k] = $('m-' + k).value; });
       try { const r = await X.api('edSaveModule', [code, f]); await edLoad(true); X.refresh(); $('ed-ok').textContent = r.msg; $('ed-ok').hidden = false; $('ed-err').hidden = true; }
       catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; $('ed-ok').hidden = true; }
       B.disabled = false;
