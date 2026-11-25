@@ -10,6 +10,7 @@
   // ---------------------------------------------------------------- messages
   const MSG = {
     SLOW: 'The server is taking too long. Please try again.',
+    BUSY: 'Someone else is saving right now. Please click again in a few seconds.',
     NOT_REGISTERED: "This email isn't registered yet. Ask your Teacher Leader to add you to STAR Library, then try again.",
     TOO_MANY: 'Too many tries. Please wait 15 minutes, then try again.',
     WRONG_CODE: "That code isn't right. Check the email and try again.",

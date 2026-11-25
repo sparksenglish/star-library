@@ -36,6 +36,8 @@
     try { body = await res.json(); }
     catch (e) { clearTimeout(timer); throw new Error(e && e.name === 'AbortError' ? 'SLOW' : 'SERVER_ERROR'); }
     clearTimeout(timer);
+    // BUSY = someone else was saving and nothing was written: try once more by itself
+    if (body && body.error === 'BUSY' && !(tries >= 2)) { await new Promise((r) => setTimeout(r, 2000)); return call(fn, args, 2); }
     if (!body || !body.ok) throw new Error((body && body.error) || 'SERVER_ERROR');
     return body.data;
   }
