@@ -142,7 +142,7 @@ window.STAR_MORE = function (X) {
   let ED = null, edTab = 'trainings', edQ = '', edFilter = '', poll = 0;
   async function edLoad(force) { if (!ED || force) ED = await X.api('edCatalogue', []); return ED; }
   const statusPill = (t) => t._building ? '<span class="st soon">Building…</span>' : '<span class="st' + (t.Status === 'Live' ? '' : ' soon') + '">' + esc(t.Status || 'Placeholder') + '</span>';
-  const edTabs = () => '<div class="tabs">' + [['trainings', 'Trainings'], ['modules', 'Modules'], ['questions', 'Questions']].map((t) => '<a class="chip' + (edTab === t[0] ? ' on' : '') + '" href="#/edit/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>';
+  const edTabs = () => '<div class="tabs">' + [['trainings', 'Trainings'], ['modules', 'Modules'], ['questions', 'Questions'], ['sessions', 'Sessions']].map((t) => '<a class="chip' + (edTab === t[0] ? ' on' : '') + '" href="#/edit/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>';
 
   async function editor(tab, id) {
     edTab = tab || 'trainings';
@@ -152,6 +152,8 @@ window.STAR_MORE = function (X) {
     if (edTab === 'trainings' && id) return edTraining(id);
     if (edTab === 'modules' && id) return edModule(id);
     if (edTab === 'questions') return edQuestions();
+    if (edTab === 'livetests' && id) { edTab = 'trainings'; return edLiveTests(id, (/[?&]q=([^&]+)/.exec(location.hash) || [])[1]); }
+    if (edTab === 'sessions') return id ? edSession(id) : edSessions();
     if (edTab === 'modules') return edModules();
     edTrainings();
   }
@@ -206,6 +208,7 @@ window.STAR_MORE = function (X) {
       '<div class="edbtns"><button type="button" class="btn" id="ed-save">' + (isNew ? 'Add training' : 'Save') + '</button>' +
       (isNew ? '' : (t.Status !== 'Live' && t._ready ? '<button type="button" class="btn line" id="ed-live">Make Live</button>' : '') +
         (t['Source file (L&D only)'] ? '<button type="button" class="btn soft" id="ed-build">Rebuild copy</button>' : '') +
+        '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(t.ID) + '">Pre/post test</a>' +
         (t.Status !== 'Retired' ? '<button type="button" class="btn soft" id="ed-retire" style="color:var(--err)">Retire</button>' : '')) + '</div></section>';
     X.view(h, 'edit');
     const msg = (ok, text) => { $('ed-ok').hidden = !ok; $('ed-err').hidden = ok; $(ok ? 'ed-ok' : 'ed-err').textContent = text; };
@@ -313,6 +316,54 @@ window.STAR_MORE = function (X) {
       B.disabled = false;
     };
   }
+  // ------------------------------------------------------------ live sessions: pre/post test questions, sessions
+  async function edLiveTests(id, editId) {
+    const t = ED.trainings.find((x) => x.ID === id);
+    if (!t) return X.view('<section class="sec"><p>Training not found.</p><a class="btn soft" href="#/edit/trainings">← Trainings</a></section>', 'edit');
+    let qs; try { qs = await X.api('edLiveTests', [id]); } catch (e) { return failed('edit', e); }
+    const live = qs.filter((q) => q.Active), ed = live.find((q) => q.ID === editId) || {};
+    X.view('<section class="sec"><a class="btn soft back" href="#/edit/trainings/' + encodeURIComponent(id) + '">← ' + esc(id) + '</a>' +
+      '<h1 class="big" style="font-size:28px">Pre/post test</h1><p class="sm muted" style="margin:0">' + esc(id + ' · ' + t.Title) +
+      '. In a live session, teachers answer these after joining (pre-test) and again at the end (post-test), so you can see what changed. Answers are checked on the server.</p>' +
+      '<div class="edlist">' + (live.length ? live.map((q, i) => '<div class="qcard"><div class="sm muted">' + esc(q.ID) + ' · question ' + (i + 1) + '</div><p style="margin:4px 0"><b>' + esc(q.Question) + '</b></p>' +
+        '<p class="sm" style="margin:0 0 8px">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join('<br>') + '</p>' +
+        '<div class="edbtns"><a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(id) + '?q=' + encodeURIComponent(q.ID) + '">Edit</a><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
+        : '<p class="muted">No questions yet. Without questions, live sessions of this training skip the tests.</p>') + '</div>' +
+      '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : 'Add a question') + '</h2><div class="edform">' +
+      fld('Question', area('l-Question', ed.Question || '', 2)) + fld('A', inp('l-A', ed.A || '')) + fld('B', inp('l-B', ed.B || '')) + fld('C', inp('l-C', ed.C || ''), 'Optional') + fld('D', inp('l-D', ed.D || ''), 'Optional') +
+      fld('Correct answer', sel('l-Answer', ed.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) +
+      '</div><p class="gerr" id="ed-err" role="alert" hidden></p><p class="gok" id="ed-ok" role="status" hidden></p>' +
+      '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID ? '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(id) + '">Cancel</a>' : '') + '</div></section>', 'edit');
+    $('l-save').onclick = async () => {
+      const B = $('l-save'); B.disabled = true;
+      const f = { Training: id, ID: ed.ID || '' }; ['Question', 'A', 'B', 'C', 'D', 'Answer'].forEach((k) => { f[k] = $('l-' + k).value; });
+      try { const r = await X.api('edSaveLiveTest', [f]); X.toast(r.msg); if (ed.ID) location.hash = '#/edit/livetests/' + encodeURIComponent(id); else edLiveTests(id); }
+      catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; B.disabled = false; }
+    };
+    document.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { const r = await X.api('edHideLiveTest', [b.dataset.rm]); X.toast(r.msg); edLiveTests(id); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
+  }
+  const when = (ms) => ms ? new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const pct = (x) => (x == null || isNaN(x) ? '–' : x + '%');
+  async function edSessions() {
+    let ss; try { ss = await X.api('edSessions', []); } catch (e) { return failed('edit', e); }
+    X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +
+      '<p class="sm muted" style="margin:0">Live sessions, newest first. Facilitators start one from a training with Go live.</p><div class="edlist">' +
+      (ss.length ? ss.map((s) => '<a class="edrow" href="#/edit/sessions/' + encodeURIComponent(s.code + '-' + s.st) + '"><span class="code">' + esc(s.code) + '</span><span><b>' + esc(s.t + ' · ' + s.tt) + '</b><br><span class="sm muted">' +
+        esc(when(s.st) + ' · ' + (s.ce || 'no centre') + ' · ' + s.host + (s.en ? '' : ' · still open')) + '</span></span><span class="sm" style="text-align:right">' + s.people + ' people<br>' + pct(s.pre) + ' → ' + pct(s.post) + '</span></a>').join('')
+        : '<p class="muted">No live sessions yet.</p>') + '</div></section>', 'edit');
+  }
+  async function edSession(key) {
+    const m = /^(\d{6})-(\d+)$/.exec(key || '');
+    let d; try { d = await X.api('edSession', [m ? m[1] : '', m ? +m[2] : 0]); } catch (e) { return failed('edit', e); }
+    const s = d.s, sc = (x) => (x ? x.s + '/' + x.t : '–');
+    X.view('<section class="sec"><a class="btn soft back" href="#/edit/sessions">← Sessions</a><h1 class="big" style="font-size:28px">' + esc(s.t + ' · ' + s.tt) + '</h1>' +
+      '<p class="sm muted" style="margin:0">' + esc('Code ' + s.code + ' · ' + when(s.st) + (s.en ? ' to ' + when(s.en) : ' · still open') + ' · ' + (s.ce || 'no centre') + ' · host ' + s.host) + '</p>' +
+      '<div class="lv-scores"><div class="lv-scbox"><small>Teachers</small><b>' + d.people.length + '</b></div><div class="lv-scbox"><small>Pre-test average</small><b>' + pct(s.pre) + '</b></div><div class="lv-scbox up"><small>Post-test average</small><b>' + pct(s.post) + '</b></div></div>' +
+      '<h2 class="lbl">Attendance</h2><div class="edlist">' + (d.people.length ? d.people.map((p) => '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b><br><span class="sm muted">joined ' + esc(when(p.j)) +
+        (p.h ? ' · hand up ' + p.h + '×' : '') + (p.q ? ' · ' + p.q + ' question' + (p.q > 1 ? 's' : '') : '') + '</span></span><span class="sm" style="text-align:right">Pre ' + sc(p.pre) + '<br>Post ' + sc(p.post) + '</span></div>').join('') : '<p class="muted">Nobody joined.</p>') + '</div>' +
+      '<h2 class="lbl">Questions from the room</h2><div class="edlist">' + (d.q.length ? d.q.map((q) => '<div class="qcard"><div class="sm muted">' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s + ' · ' + when(q.ts)) + '</div><p style="margin:4px 0">' + esc(q.tx) + '</p></div>').join('') : '<p class="muted">No questions.</p>') + '</div></section>', 'edit');
+  }
+
   async function edQuestions() {
     let qs; try { qs = await X.api('edQuestions', []); } catch (e) { return failed('edit', e); }
     X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +

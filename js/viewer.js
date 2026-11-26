@@ -51,13 +51,14 @@
     const m = c.module;
     DK.innerHTML = '<div class="dk">' +
       '<div class="dk-top"><div class="dk-head"><small>' + esc(t.i) + '</small><h2 id="dk-title">' + esc(c.title) + '</h2>' + (m ? '<p>' + esc(t.t) + '</p>' : '') + '</div>' +
-      '<div class="dk-acts" id="dk-acts"></div><div class="dk-mine"><button type="button" class="dk-lk" id="dk-bm"></button></div>' +
+      '<div class="dk-acts" id="dk-acts"></div><div class="dk-mine">' + (c.canHost && t.k === 'slides' && t.n ? '<button type="button" class="dk-lk dk-live" id="dk-live">Go live</button>' : '') + '<button type="button" class="dk-lk" id="dk-bm"></button></div>' +
       '<button type="button" class="dk-x" id="dk-x" aria-label="Close">✕</button></div>' +
       '<div class="dk-body" id="dk-body"><div class="dk-stage" id="dk-stage"></div><aside class="dk-panel" id="dk-panel" hidden></aside></div>' +
       '<div class="dk-grid" id="dk-grid" hidden></div><div class="dk-bar" id="dk-bar"></div>' +
       '<button type="button" class="dk-fsx" id="dk-fsx" aria-label="Exit full screen">✕</button></div>';
     DK.hidden = false; document.body.classList.add('modal');
     $('dk-x').onclick = () => leave(); $('dk-fsx').onclick = full;
+    if ($('dk-live')) $('dk-live').onclick = () => c.host($('dk-live'));
     bm(); bar();
     if (cur.n) {
       show(1);

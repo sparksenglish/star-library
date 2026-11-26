@@ -95,3 +95,4 @@
  .dk-bar .tx{display:none}
  .dk-end .recs{grid-template-columns:1fr}
 }
+.dk-lk.dk-live{width:auto;border-radius:99px;padding:0 16px;background:var(--lime);border-color:var(--lime);color:#141414;font:700 14px var(--font)}

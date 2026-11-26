@@ -24,7 +24,7 @@
     OFFLINE: "You're offline. Check your connection and try again.",
     NO_API: 'STAR Library is not set up yet (no server address).'
   };
-  const why = (e) => MSG[String(e && e.message || e)] || 'Something went wrong. Check your connection and try again.';
+  const why = (e) => { const m = String(e && e.message || e); return m.indexOf('MSG:') === 0 ? m.slice(4) : MSG[m] || 'Something went wrong. Check your connection and try again.'; };
   const isOut = (e) => String(e && e.message || e) === 'SIGNED_OUT';
   let toastT = 0;
   function toast(t) { const T = $('toast'); T.textContent = t; T.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { T.hidden = true; }, 2800); }
@@ -146,6 +146,8 @@
   // ---------------------------------------------------------------- start
   async function boot() {
     online();
+    const jm = /^#\/join(?:\/(\d{6}))?/.exec(location.hash);
+    if (jm) { $('boot').hidden = true; window.STAR_LIVE.join(jm[1] || ''); if (!TOK) return; }   // phones in a live session: no sign-in needed
     if (!TOK) return gate();
     const saved = store.json('boot');
     if (saved) enter(saved, true);          // show the last catalogue at once, then refresh it
@@ -253,7 +255,8 @@
     const popular = ['S2', 'S1', 'S3'].map((s) => stageOf(s)).filter(Boolean);
     let h = '<section class="sec"><div class="home-top"><div style="display:flex;flex-direction:column;gap:14px">' +
       '<h1 class="big">Grow with <em>L&amp;D</em></h1>' + searchBox() +
-      '<div class="chips"><span class="sm muted">Popular:</span>' + popular.map((s) => '<a class="chip" href="#/s/' + s.s + '">' + esc(s.n) + '</a>').join('') + '</div></div>';
+      '<div class="chips"><span class="sm muted">Popular:</span>' + popular.map((s) => '<a class="chip" href="#/s/' + s.s + '">' + esc(s.n) + '</a>').join('') + '</div>' +
+      '<a class="btn soft live-join" href="#/join">Join a live session</a></div>';
     if (f) {
       const cv = coverKey(f);
       h += '<a class="book feat" href="#/t/' + encodeURIComponent(f.i) + '" aria-label="Latest training: ' + esc(trTitle(f) + ', ' + f.t) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +
@@ -418,7 +421,9 @@
       const t = TR[p[1]];
       if (!t) { location.replace('#/'); return; }
       if (!document.querySelector('#view .sec, #view section')) { if (t.m && MOD[t.m]) moduleView(t.m); else stageView('OTHER'); }
-      window.STAR_VIEW.open(t, { module: MOD[t.m] || null, title: trTitle(t), recFor, ready, lib: LIBAPI, api, toast, back: lastPage, fromApp: routed > 0 });
+      window.STAR_VIEW.open(t, { module: MOD[t.m] || null, title: trTitle(t), recFor, ready, lib: LIBAPI, api, toast, back: lastPage, fromApp: routed > 0,
+        canHost: ME && (ME.role === 'L&D' || ME.role === 'Centre'),
+        host: async (B) => { B.disabled = true; B.textContent = 'Starting…'; try { await window.STAR_LIVE.start(t.i); } catch (e) { toast(why(e)); B.disabled = false; B.textContent = 'Go live'; } } });
       return;
     }
     window.STAR_VIEW.close();
@@ -431,10 +436,17 @@
     else if (p[0] === 'team') MORE.team();
     else if (p[0] === 'person' && p[1]) MORE.person(p[1]);
     else if (p[0] === 'edit') MORE.editor(p[1], p[2] && p[2].split('?')[0]);
+    else if (p[0] === 'live' && p[1]) { homeView(); window.STAR_LIVE.present(p[1]); return; }
+    else if (p[0] === 'join') { homeView(); if (!window.STAR_LIVE.active()) window.STAR_LIVE.join(p[1] || ''); return; }
     else homeView();
     if (!/^#\/t\//.test(h)) scrollTo({ top: 0 });
   }
-  addEventListener('hashchange', () => { routed++; route(); });
+  addEventListener('hashchange', () => {
+    routed++;
+    if (!/^#\/(live|join)/.test(location.hash) && window.STAR_LIVE.active()) window.STAR_LIVE.close();
+    if (!CAT && /^#\/join/.test(location.hash)) { const m = /^#\/join(?:\/(\d{6}))?/.exec(location.hash); window.STAR_LIVE.join((m && m[1]) || ''); return; }
+    route();
+  });
   document.querySelector('.nav a[data-nav="curriculum"]').addEventListener('click', (e) => { e.preventDefault(); location.hash = '#/s/' + (store.get('stage') || 'S2'); });
 
   /** Re-read the catalogue after an editor change (the server cache is cleared on save). */

@@ -315,3 +315,4 @@ h1.big em{font-style:normal;color:var(--brand)}
 }
 @media (min-width:1024px) and (hover:hover){.nav a:hover{background:var(--soft)}}
 @media (prefers-reduced-motion:reduce){.book,.fd .papers i{transition:none}.book:hover{transform:none}}
+.live-join{align-self:flex-start}
