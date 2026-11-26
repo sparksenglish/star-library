@@ -79,7 +79,7 @@
     SCREEN = 'join';
     const last = store.json('live-me') || {};
     let pick = last.a || '';
-    L.innerHTML = '<div class="lv-phone"><div class="lv-head"><img src="img/logo.webp" alt="STAR Library" class="lv-logo"></div>' +
+    L.innerHTML = '<div class="lv-phone"><div class="lv-head"><a href="#/" class="btn soft lv-home" id="lv-home">← ' + (store.get('tok') ? 'Home' : 'Sign in') + '</a><a href="#/" class="lv-logolink" id="lv-logo" aria-label="STAR Library home"><img src="img/logo.webp" alt="STAR Library" class="lv-logo"></a></div>' +
       '<form class="lv-card" id="lv-join" novalidate><h1 class="lv-h1">Join live session</h1>' +
       '<label class="lv-fld">Session code<input id="lv-code" class="lv-codein" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="123 456" value="' + esc(code) + '"></label>' +
       '<label class="lv-fld">Your name<input id="lv-name" autocomplete="name" maxlength="40" placeholder="e.g. Siti Rahma" value="' + esc(last.n || '') + '"></label>' +
@@ -89,6 +89,8 @@
       '</div></fieldset><p class="gerr" id="lv-err" role="alert"' + (err ? '' : ' hidden') + '>' + esc(err || '') + '</p>' +
       '<button class="btn lv-big" id="lv-go">Join</button></form>' +
       '<p class="lv-small">No sign-in needed. Your name is used for attendance and the tests.</p></div>';
+    const home = (ev) => { ev.preventDefault(); stop(); if (!store.get('tok')) { L.hidden = true; location.replace('./'); return; } close(); location.hash = '#/'; };
+    $('lv-home').onclick = home; $('lv-logo').onclick = home;
     L.querySelectorAll('.lv-avbtn').forEach((b) => { b.onclick = () => { pick = pick === b.dataset.a ? '' : b.dataset.a; L.querySelectorAll('.lv-avbtn').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.a === pick))); }; });
     $(code ? 'lv-name' : 'lv-code').focus();
     $('lv-join').onsubmit = async (ev) => {

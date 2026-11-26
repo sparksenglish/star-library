@@ -255,8 +255,7 @@
     const popular = ['S2', 'S1', 'S3'].map((s) => stageOf(s)).filter(Boolean);
     let h = '<section class="sec"><div class="home-top"><div style="display:flex;flex-direction:column;gap:14px">' +
       '<h1 class="big">Grow with <em>L&amp;D</em></h1>' + searchBox() +
-      '<div class="chips"><span class="sm muted">Popular:</span>' + popular.map((s) => '<a class="chip" href="#/s/' + s.s + '">' + esc(s.n) + '</a>').join('') + '</div>' +
-      '<a class="btn soft live-join" href="#/join">Join a live session</a></div>';
+      '<div class="chips"><span class="sm muted">Popular:</span>' + popular.map((s) => '<a class="chip" href="#/s/' + s.s + '">' + esc(s.n) + '</a>').join('') + '</div></div>';
     if (f) {
       const cv = coverKey(f);
       h += '<a class="book feat" href="#/t/' + encodeURIComponent(f.i) + '" aria-label="Latest training: ' + esc(trTitle(f) + ', ' + f.t) + '"><span class="bk"></span><span class="pg"></span><span class="cv">' +

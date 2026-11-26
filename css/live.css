@@ -38,7 +38,9 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 
 /* ---------- phone ---------- */
 .lv-phone{max-width:520px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;box-sizing:border-box;min-height:100%}
-.lv-head{display:flex;align-items:center}
+.lv-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.lv-home{height:44px;padding:0 18px}
+.lv-logolink{display:inline-flex}
 .lv-logo{height:44px;width:auto}
 .lv-avgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .lv-avbtn{border:3px solid transparent;background:var(--soft);border-radius:14px;padding:2px;cursor:pointer;aspect-ratio:1}
