@@ -152,7 +152,7 @@ window.STAR_MORE = function (X) {
     if (edTab === 'trainings' && id) return edTraining(id);
     if (edTab === 'modules' && id) return edModule(id);
     if (edTab === 'questions') return edQuestions();
-    if (edTab === 'livetests' && id) { edTab = 'trainings'; return edLiveTests(id, (/[?&]q=([^&]+)/.exec(location.hash) || [])[1]); }
+    if (edTab === 'livetests' && id) { edTab = 'trainings'; const g = (k) => decodeURIComponent((new RegExp('[?&]' + k + '=([^&]+)').exec(location.hash) || [])[1] || ''); return edLiveTests(id, g('q'), g('a')); }
     if (edTab === 'sessions') return id ? edSession(id) : edSessions();
     if (edTab === 'modules') return edModules();
     edTrainings();
@@ -208,7 +208,7 @@ window.STAR_MORE = function (X) {
       '<div class="edbtns"><button type="button" class="btn" id="ed-save">' + (isNew ? 'Add training' : 'Save') + '</button>' +
       (isNew ? '' : (t.Status !== 'Live' && t._ready ? '<button type="button" class="btn line" id="ed-live">Make Live</button>' : '') +
         (t['Source file (L&D only)'] ? '<button type="button" class="btn soft" id="ed-build">Rebuild copy</button>' : '') +
-        '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(t.ID) + '">Pre/post test</a>' +
+        '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(t.ID) + '">Live session</a>' +
         (t.Status !== 'Retired' ? '<button type="button" class="btn soft" id="ed-retire" style="color:var(--err)">Retire</button>' : '')) + '</div></section>';
     X.view(h, 'edit');
     const msg = (ok, text) => { $('ed-ok').hidden = !ok; $('ed-err').hidden = ok; $(ok ? 'ed-ok' : 'ed-err').textContent = text; };
@@ -317,30 +317,72 @@ window.STAR_MORE = function (X) {
     };
   }
   // ------------------------------------------------------------ live sessions: pre/post test questions, sessions
-  async function edLiveTests(id, editId) {
+  async function edLiveTests(id, editId, actId) {
     const t = ED.trainings.find((x) => x.ID === id);
     if (!t) return X.view('<section class="sec"><p>Training not found.</p><a class="btn soft" href="#/edit/trainings">← Trainings</a></section>', 'edit');
-    let qs; try { qs = await X.api('edLiveTests', [id]); } catch (e) { return failed('edit', e); }
-    const live = qs.filter((q) => q.Active), ed = live.find((q) => q.ID === editId) || {};
+    let qs, su;
+    try { [qs, su] = await Promise.all([X.api('edLiveTests', [id]), X.api('edLiveSetup', [id])]); } catch (e) { return failed('edit', e); }
+    const live = qs.filter((q) => q.Active), ed = live.find((q) => q.ID === editId) || {}, ea = su.acts.find((a) => a.ID === actId) || {};
+    const TYN = { poll: 'Poll', text: 'Text', drag: 'Draggable', draw: 'Draw' };
+    const TYH = { poll: 'Teachers tap one option. The projector shows a bar chart.', text: 'Teachers type a short answer. The projector shows the answers as notes.',
+      drag: 'Teachers drag one dot on the slide. The projector shows all the dots on the slide.', draw: 'Teachers draw on the slide with a finger. The projector shows a gallery of drawings.' };
+    const here = '#/edit/livetests/' + encodeURIComponent(id);
     X.view('<section class="sec"><a class="btn soft back" href="#/edit/trainings/' + encodeURIComponent(id) + '">← ' + esc(id) + '</a>' +
-      '<h1 class="big" style="font-size:28px">Pre/post test</h1><p class="sm muted" style="margin:0">' + esc(id + ' · ' + t.Title) +
-      '. In a live session, teachers answer these after joining (pre-test) and again at the end (post-test), so you can see what changed. Answers are checked on the server.</p>' +
+      '<h1 class="big" style="font-size:28px">Live session</h1><p class="sm muted" style="margin:0">' + esc(id + ' · ' + t.Title + ' · ' + su.slides + ' slides') +
+      '. Set what teachers do on their phones during a live session of this training.</p>' +
+      // activities
+      '<h2 class="sec-h" style="font-size:20px">Slide activities</h2><p class="sm muted" style="margin:0">One activity per slide. It opens on phones when you reach that slide. Answers are anonymous on the projector unless you turn on Show names.</p>' +
+      '<div class="edlist">' + (su.acts.length ? su.acts.map((a) => '<div class="edrow"><span class="code">Slide ' + a.Slide + '</span><span><b>' + esc(a.Prompt) + '</b><br><span class="sm muted">' + TYN[a.Type] +
+        (a.Type === 'poll' ? ' · ' + esc(a.Options.split('\n').join(' / ')) : '') + '</span></span><span class="edbtns"><a class="btn soft" href="' + here + '?a=' + encodeURIComponent(a.ID) + '">Edit</a>' +
+        '<button type="button" class="btn soft" style="color:var(--err)" data-ra="' + esc(a.ID) + '">Remove</button></span></div>').join('') : '<p class="muted">No activities yet.</p>') + '</div>' +
+      '<h2 class="lbl">' + (ea.ID ? 'Edit activity on slide ' + ea.Slide : 'Add an activity') + '</h2><div class="edform">' +
+      fld('Slide', '<input id="a-Slide" class="edin" type="number" min="1" max="' + su.slides + '" inputmode="numeric" value="' + esc(ea.Slide || '') + '">') +
+      fld('Type', sel('a-Type', ea.Type || 'poll', [['poll', 'Poll'], ['text', 'Text'], ['drag', 'Draggable'], ['draw', 'Draw']]), '<span id="a-help">' + TYH[ea.Type || 'poll'] + '</span>') +
+      fld('Prompt (what teachers see)', area('a-Prompt', ea.Prompt || '', 2)) +
+      '<div id="a-optbox">' + fld('Options (one per line, 2 to 6)', area('a-Options', ea.Options || '', 4)) + '</div>' +
+      '</div><p class="gerr" id="a-err" role="alert" hidden></p>' +
+      '<div class="edbtns"><button type="button" class="btn" id="a-save">' + (ea.ID ? 'Save activity' : 'Add activity') + '</button>' + (ea.ID ? '<a class="btn soft" href="' + here + '">Cancel</a>' : '') + '</div>' +
+      // where the tests go
+      '<h2 class="sec-h" style="font-size:20px">Pre-test and post-test</h2><p class="sm muted" style="margin:0">Teachers answer the same questions twice, so you can see what changed. Answers are checked on the server.</p>' +
+      '<div class="edform">' + fld('Pre-test opens at slide', '<input id="p-pre" class="edin" type="number" min="1" max="' + su.slides + '" inputmode="numeric" value="' + su.preAt + '">', '1 = straight after joining, before the first slide.') +
+      fld('Post-test opens at slide', '<input id="p-post" class="edin" type="number" min="1" max="' + su.slides + '" inputmode="numeric" placeholder="At the end" value="' + (su.postAt || '') + '">', 'Leave empty to open it when you tap End.') + '</div>' +
+      '<div class="edbtns"><button type="button" class="btn soft" id="p-save">Save test positions</button></div>' +
       '<div class="edlist">' + (live.length ? live.map((q, i) => '<div class="qcard"><div class="sm muted">' + esc(q.ID) + ' · question ' + (i + 1) + '</div><p style="margin:4px 0"><b>' + esc(q.Question) + '</b></p>' +
         '<p class="sm" style="margin:0 0 8px">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join('<br>') + '</p>' +
-        '<div class="edbtns"><a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(id) + '?q=' + encodeURIComponent(q.ID) + '">Edit</a><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
+        '<div class="edbtns"><a class="btn soft" href="' + here + '?q=' + encodeURIComponent(q.ID) + '">Edit</a><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
         : '<p class="muted">No questions yet. Without questions, live sessions of this training skip the tests.</p>') + '</div>' +
-      '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : 'Add a question') + '</h2><div class="edform">' +
+      '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : 'Add a test question') + '</h2><div class="edform">' +
       fld('Question', area('l-Question', ed.Question || '', 2)) + fld('A', inp('l-A', ed.A || '')) + fld('B', inp('l-B', ed.B || '')) + fld('C', inp('l-C', ed.C || ''), 'Optional') + fld('D', inp('l-D', ed.D || ''), 'Optional') +
       fld('Correct answer', sel('l-Answer', ed.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) +
       '</div><p class="gerr" id="ed-err" role="alert" hidden></p><p class="gok" id="ed-ok" role="status" hidden></p>' +
-      '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID ? '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(id) + '">Cancel</a>' : '') + '</div></section>', 'edit');
+      '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID ? '<a class="btn soft" href="' + here + '">Cancel</a>' : '') + '</div></section>', 'edit');
+    const tySync = () => { const v = $('a-Type').value; $('a-optbox').hidden = v !== 'poll'; $('a-help').textContent = TYH[v]; };
+    $('a-Type').onchange = tySync; tySync();
+    if (actId && ea.ID) $('a-Slide').scrollIntoView({ block: 'center' });
+    if (editId && ed.ID) $('l-Question').scrollIntoView({ block: 'center' });
+    $('a-save').onclick = async () => {
+      const B = $('a-save'); B.disabled = true;
+      const f = { Training: id, ID: ea.ID || '', Slide: $('a-Slide').value, Type: $('a-Type').value, Prompt: $('a-Prompt').value, Options: $('a-Options').value };
+      try { const r = await X.api('edSaveActivity', [f]); X.toast(r.msg); if (ea.ID) location.hash = here; else edLiveTests(id); }
+      catch (e) { $('a-err').textContent = errText(e); $('a-err').hidden = false; B.disabled = false; }
+    };
+    $('p-save').onclick = async () => {
+      const B = $('p-save'); B.disabled = true;
+      try {
+        const a = await X.api('edSaveActivity', [{ Training: id, Type: 'pretest', Slide: $('p-pre').value || 1 }]);
+        const b = await X.api('edSaveActivity', [{ Training: id, Type: 'posttest', Slide: $('p-post').value || 0 }]);
+        X.toast(a.msg + ' ' + b.msg);
+      } catch (e) { X.toast(errText(e)); }
+      B.disabled = false;
+    };
     $('l-save').onclick = async () => {
       const B = $('l-save'); B.disabled = true;
       const f = { Training: id, ID: ed.ID || '' }; ['Question', 'A', 'B', 'C', 'D', 'Answer'].forEach((k) => { f[k] = $('l-' + k).value; });
-      try { const r = await X.api('edSaveLiveTest', [f]); X.toast(r.msg); if (ed.ID) location.hash = '#/edit/livetests/' + encodeURIComponent(id); else edLiveTests(id); }
+      try { const r = await X.api('edSaveLiveTest', [f]); X.toast(r.msg); if (ed.ID) location.hash = here; else edLiveTests(id); }
       catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; B.disabled = false; }
     };
     document.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { const r = await X.api('edHideLiveTest', [b.dataset.rm]); X.toast(r.msg); edLiveTests(id); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
+    document.querySelectorAll('[data-ra]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { const r = await X.api('edHideActivity', [b.dataset.ra]); X.toast(r.msg); edLiveTests(id); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
   }
   const when = (ms) => ms ? new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
   const pct = (x) => (x == null || isNaN(x) ? '–' : x + '%');
@@ -352,6 +394,17 @@ window.STAR_MORE = function (X) {
         esc(when(s.st) + ' · ' + (s.ce || 'no centre') + ' · ' + s.host + (s.en ? '' : ' · still open')) + '</span></span><span class="sm" style="text-align:right">' + s.people + ' people<br>' + pct(s.pre) + ' → ' + pct(s.post) + '</span></a>').join('')
         : '<p class="muted">No live sessions yet.</p>') + '</div></section>', 'edit');
   }
+  function actSummary(ans) {
+    const by = {}; ans.forEach((a) => { (by[a.i] = by[a.i] || { s: a.s, ty: a.ty, list: [] }).list.push(a); });
+    const TYN = { poll: 'Poll', text: 'Text', drag: 'Draggable', draw: 'Draw' };
+    return Object.keys(by).sort((x, y) => by[x].s - by[y].s).map((k) => {
+      const g = by[k];
+      let body;
+      if (g.ty === 'poll') { const c = {}; g.list.forEach((a) => { c[a.v] = (c[a.v] || 0) + 1; }); body = Object.keys(c).sort((x, y) => c[y] - c[x]).map((o) => esc(o) + ': <b>' + c[o] + '</b>').join(' · '); }
+      else body = g.list.map((a) => '<div>' + esc(a.n + (a.c ? ' (' + a.c + ')' : '')) + ': ' + (g.ty === 'draw' && /^https:\/\//.test(a.v) ? '<a href="' + esc(a.v) + '" target="_blank" rel="noopener">open drawing</a>' : g.ty === 'drag' ? esc(a.v.split(',').map((x, k) => Math.round(+x * 100) + '% ' + (k ? 'down' : 'across')).join(', ')) : esc(a.v)) + '</div>').join('');
+      return '<div class="qcard"><div class="sm muted">Slide ' + g.s + ' · ' + TYN[g.ty] + ' · ' + g.list.length + ' answer' + (g.list.length === 1 ? '' : 's') + '</div><div class="sm" style="margin-top:6px">' + body + '</div></div>';
+    }).join('');
+  }
   async function edSession(key) {
     const m = /^(\d{6})-(\d+)$/.exec(key || '');
     let d; try { d = await X.api('edSession', [m ? m[1] : '', m ? +m[2] : 0]); } catch (e) { return failed('edit', e); }
@@ -361,6 +414,7 @@ window.STAR_MORE = function (X) {
       '<div class="lv-scores"><div class="lv-scbox"><small>Teachers</small><b>' + d.people.length + '</b></div><div class="lv-scbox"><small>Pre-test average</small><b>' + pct(s.pre) + '</b></div><div class="lv-scbox up"><small>Post-test average</small><b>' + pct(s.post) + '</b></div></div>' +
       '<h2 class="lbl">Attendance</h2><div class="edlist">' + (d.people.length ? d.people.map((p) => '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b><br><span class="sm muted">joined ' + esc(when(p.j)) +
         (p.h ? ' · hand up ' + p.h + '×' : '') + (p.q ? ' · ' + p.q + ' question' + (p.q > 1 ? 's' : '') : '') + '</span></span><span class="sm" style="text-align:right">Pre ' + sc(p.pre) + '<br>Post ' + sc(p.post) + '</span></div>').join('') : '<p class="muted">Nobody joined.</p>') + '</div>' +
+      (d.ans && d.ans.length ? '<h2 class="lbl">Slide activities</h2>' + actSummary(d.ans) : '') +
       '<h2 class="lbl">Questions from the room</h2><div class="edlist">' + (d.q.length ? d.q.map((q) => '<div class="qcard"><div class="sm muted">' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s + ' · ' + when(q.ts)) + '</div><p style="margin:4px 0">' + esc(q.tx) + '</p></div>').join('') : '<p class="muted">No questions.</p>') + '</div></section>', 'edit');
   }
 

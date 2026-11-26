@@ -95,4 +95,13 @@
  .dk-bar .tx{display:none}
  .dk-end .recs{grid-template-columns:1fr}
 }
-.dk-lk.dk-live{width:auto;border-radius:99px;padding:0 16px;background:var(--lime);border-color:var(--lime);color:#141414;font:700 14px var(--font)}
+
+/* Buttons: one style everywhere. Main = lime pill, second = grey pill, icon = round grey. All 44 px tall. */
+.dk-mine{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.dk-x,.dk-lk{background:var(--soft);border:1.5px solid var(--line);color:var(--ink)}
+.dk-lk[aria-pressed="true"],.dk-lk[aria-expanded="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+.dk-lk.dk-pill{width:auto;border-radius:99px;padding:0 16px;display:inline-flex;gap:6px;font:700 14px var(--font)}
+.dk-lk.dk-pill svg{width:18px;height:18px}
+.dk-lk.dk-live{width:auto;border-radius:99px;padding:0 18px;display:inline-flex;align-items:center;white-space:nowrap;font:700 14px var(--font);background:var(--btn);border-color:transparent;color:var(--btn-t)}
+.dk-btn{background:var(--soft);border:1.5px solid var(--line);font-weight:700}
+.dk-btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel)}

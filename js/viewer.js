@@ -51,7 +51,7 @@
     const m = c.module;
     DK.innerHTML = '<div class="dk">' +
       '<div class="dk-top"><div class="dk-head"><small>' + esc(t.i) + '</small><h2 id="dk-title">' + esc(c.title) + '</h2>' + (m ? '<p>' + esc(t.t) + '</p>' : '') + '</div>' +
-      '<div class="dk-acts" id="dk-acts"></div><div class="dk-mine">' + (c.canHost && t.k === 'slides' && t.n ? '<button type="button" class="dk-lk dk-live" id="dk-live">Go live</button>' : '') + '<button type="button" class="dk-lk" id="dk-bm"></button></div>' +
+      '<div class="dk-acts" id="dk-acts"></div><div class="dk-mine">' + (c.canHost && t.k === 'slides' && t.n ? '<button type="button" class="dk-lk dk-live" id="dk-live">Go live</button>' : '') + '<button type="button" class="dk-lk dk-pill" id="dk-bm"></button></div>' +
       '<button type="button" class="dk-x" id="dk-x" aria-label="Close">✕</button></div>' +
       '<div class="dk-body" id="dk-body"><div class="dk-stage" id="dk-stage"></div><aside class="dk-panel" id="dk-panel" hidden></aside></div>' +
       '<div class="dk-grid" id="dk-grid" hidden></div><div class="dk-bar" id="dk-bar"></div>' +
@@ -87,7 +87,7 @@
   function bm() {
     const b = $('dk-bm'), on = ctx.lib.inShelf(cur.t.i);
     b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Saved to My shelf. Tap to remove' : 'Save to My shelf');
-    b.innerHTML = on ? I.bmOn : I.bm;
+    b.innerHTML = (on ? I.bmOn : I.bm) + '<span>' + (on ? 'Saved' : 'Save') + '</span>';
     b.onclick = () => { const now = ctx.lib.toggleShelf(cur.t.i); bm(); ctx.toast(now ? 'Saved to My shelf' : 'Removed from My shelf'); };
   }
 

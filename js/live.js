@@ -107,26 +107,41 @@
     };
   }
 
+  /** Which test should be on the screen now (the facilitator picks the slide for each in the Editor). */
+  function due() {
+    if (!R || !R.pre) return '';
+    if (R.postDue && !R.me.post) return 'post';
+    if (R.preDue && !R.me.pre && !store.get('live-skip-' + P.code)) return 'pre';
+    return '';
+  }
   function afterJoin(r) {
     R = r; VER = r.v; offset = r.now - Date.now();
     if (r.ph === 'ended') return done();
-    if (r.ph === 'post') return r.me.post || !r.pre ? done() : test('post');
-    if (r.pre && !r.me.pre && !store.get('live-skip-' + P.code)) return test('pre');
+    const d = due();
+    if (d) return test(d);
+    if (r.ph === 'post') return done();
     liveView();
+  }
+  function next() {           // after a test: back to the session, or the end
+    const d = due();
+    if (d) return test(d);
+    if (R.ph === 'live') return liveView();
+    done();
   }
 
   // ---------------------------------------------------------------- pre / post test
   async function test(which) {
     stop(); const my = gen; SCREEN = which;
-    L.innerHTML = '<div class="lv-phone"><p class="lv-wait">Opening the ' + (which === 'pre' ? 'pre' : 'post') + '-test…</p></div>';
+    L.innerHTML = '<div class="lv-phone"><p class="lv-wait">Opening the ' + which + '-test…</p></div>';
     let t;
-    try { t = await pcall('liveTest', [which]); } catch (e) { return which === 'post' ? done() : liveView(); }
+    try { t = await pcall('liveTest', [which]); } catch (e) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = R.me.post || { s: 0, t: 0 }; return R.ph === 'live' ? liveView() : done(String(e.message) === 'NOT_AVAILABLE'); }
     if (my !== gen) return;
-    if (!t.qs.length) return which === 'post' ? done() : liveView();
+    if (t.done) { R.me[which] = t.done; return next(); }
+    if (!t.qs.length) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = { s: 0, t: 0 }; return next(); }
     const ans = {}; let i = 0;
     const draw = () => {
       const q = t.qs[i], last = i === t.qs.length - 1;
-      L.innerHTML = '<div class="lv-phone">' + meBar(which === 'pre' ? 'Before we start' : 'Session finished') +
+      L.innerHTML = '<div class="lv-phone">' + meBar(which === 'pre' ? 'Pre-test' : 'Post-test') +
         '<div class="lv-card"><div class="lv-row"><span class="lv-pill ' + (which === 'pre' ? 'dark' : 'lime') + '">' + (which === 'pre' ? 'PRE-TEST' : 'POST-TEST') + '</span>' +
         '<span class="lv-muted">Question ' + (i + 1) + ' of ' + t.qs.length + '</span></div>' +
         '<div class="lv-prog"><i style="width:' + Math.round(100 * (i + 1) / t.qs.length) + '%"></i></div>' +
@@ -136,19 +151,21 @@
         (i ? '<button type="button" class="btn soft" id="lv-back">← Back</button>' : '<span></span>') +
         '<button type="button" class="btn" id="lv-next"' + (ans[q.id] ? '' : ' disabled') + '>' + (last ? 'Finish' : 'Next') + '</button></div>' +
         (which === 'pre' && i === 0 ? '<button type="button" class="lv-link" id="lv-skip">Skip the pre-test</button>' : '') + '</div>' +
-        (which === 'pre' ? '<p class="lv-note">This checks what you know now. You\'ll answer the same questions after the session to see how much you\'ve grown. Scores are only seen by you and L&amp;D.</p>' : '') + '</div>';
+        (which === 'pre' ? '<p class="lv-note">This checks what you know now. You\'ll answer the same questions later to see how much you\'ve grown. Scores are only seen by you and L&amp;D.</p>' : '') + '</div>';
       L.querySelectorAll('.opt').forEach((b) => { b.onclick = () => { ans[q.id] = b.dataset.k; draw(); }; });
       if ($('lv-back')) $('lv-back').onclick = () => { i--; draw(); };
-      if ($('lv-skip')) $('lv-skip').onclick = () => { store.set('live-skip-' + P.code, '1'); liveView(); };
+      if ($('lv-skip')) $('lv-skip').onclick = () => { store.set('live-skip-' + P.code, '1'); pcall('liveSkip').catch(() => {}); next(); };
       $('lv-next').onclick = async () => {
         if (!last) { i++; return draw(); }
         const B = $('lv-next'); B.disabled = true; B.textContent = 'Checking…';
         try {
           const r = await pcall('liveSubmit', [which, ans]);
-          if (which === 'pre') { R.me.pre = { s: r.s, t: r.t }; result(which, r); } else { R.me.post = { s: r.s, t: r.t }; R.me.pre = r.pre || R.me.pre; done(); }
+          R.me[which] = { s: r.s, t: r.t }; if (r.pre) R.me.pre = r.pre;
+          if (which === 'post' && R.ph !== 'live') return done();
+          result(which, r);
         } catch (e) {
-          if (/already did/.test(String(e.message))) return which === 'pre' ? liveView() : done();
-          if (String(e.message) === 'NOT_AVAILABLE') return which === 'pre' ? liveView() : done(true);
+          if (/already did/.test(String(e.message))) { R.me[which] = R.me[which] || { s: 0, t: 0 }; return next(); }
+          if (String(e.message) === 'NOT_AVAILABLE') return which === 'pre' ? (store.set('live-skip-' + P.code, '1'), next()) : done(true);
           $('lv-err').textContent = why(e); $('lv-err').hidden = false; B.disabled = false; B.textContent = 'Finish';
         }
       };
@@ -156,25 +173,39 @@
     draw();
   }
   function result(which, r) {
-    L.innerHTML = '<div class="lv-phone">' + meBar('Pre-test done') + '<div class="lv-card lv-center"><span class="lv-score">' + r.s + '/' + r.t + '</span>' +
-      '<p>Thanks! Let\'s see how this changes after the session.</p><button type="button" class="btn lv-big" id="lv-go">Go to the session</button></div></div>';
-    $('lv-go').onclick = liveView;
+    L.innerHTML = '<div class="lv-phone">' + meBar(which === 'pre' ? 'Pre-test done' : 'Post-test done') + '<div class="lv-card lv-center">' +
+      (which === 'post' && R.me.pre ? '<div class="lv-scores">' + scbox(R.me.pre, 'Pre-test', '') + scbox(r, 'Post-test', 'up') + '</div>' : '<span class="lv-score">' + r.s + '/' + r.t + '</span>') +
+      '<p>' + (which === 'pre' ? 'Thanks! Let\'s see how this changes during the session.' : 'Well done! The session goes on.') + '</p><button type="button" class="btn lv-big" id="lv-go">Back to the session</button></div></div>';
+    $('lv-go').onclick = next;
   }
+  const scbox = (x, label, cls) => '<div class="lv-scbox ' + cls + '"><small>' + label + '</small><b>' + (x && x.t ? x.s + '/' + x.t : '–') + '</b></div>';
   function meBar(sub) {
     const me = (R && R.me) || {};
     return '<div class="lv-me">' + avatar(me, 44) + '<span><b>' + esc(me.n || '') + '</b><small>' + esc((me.c ? me.c + ' · ' : '') + sub) + '</small></span></div>';
   }
 
+  /** The box the slide picture really fills inside its frame (pictures keep their shape). */
+  function fitBox(frame, img) {
+    const W = frame.clientWidth, Hh = frame.clientHeight, iw = (img && img.naturalWidth) || 16, ih = (img && img.naturalHeight) || 9;
+    const k = Math.min(W / iw, Hh / ih), w = iw * k, h = ih * k;
+    return { left: (W - w) / 2, top: (Hh - h) / 2, width: w, height: h };
+  }
+  function placeOver(el, frame, img) { const b = fitBox(frame, img); Object.assign(el.style, { left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' }); }
+
   // ---------------------------------------------------------------- phone: following the session
+  let ACT = null;                                       // the activity on the slide being viewed
+  const DRAWN = {};                                     // strokes per drawing activity, kept while the session is open
   function liveView() {
-    stop(); const my = gen; SCREEN = 'live'; FOLLOW = true; VIEW = R.s;
+    stop(); const my = gen; SCREEN = 'live'; FOLLOW = true; VIEW = R.s; ACT = null;
+    const ANS = store.json('live-ans-' + P.code) || {};
     L.innerHTML = '<div class="lv-phone lv-livep">' +
       '<div class="lv-top"><span class="lv-pill dark"><i class="lv-dot"></i>LIVE</span><span class="lv-tt">' + esc(R.t + ' · ' + R.tt) + '</span><span id="lv-meav"></span></div>' +
       '<div class="lv-timer" id="lv-timer" hidden><span id="lv-tl"></span><b id="lv-tv"></b></div>' +
       '<div class="lv-net" id="lv-net" hidden></div>' +
-      '<div class="lv-slide" id="lv-slide"><span class="lv-wait">Loading slide…</span></div>' +
+      '<div class="lv-slide" id="lv-slide"><img id="lv-img" alt="" hidden><span class="lv-wait" id="lv-sw">Loading slide…</span><div class="lv-ov" id="lv-ov" hidden></div></div>' +
       '<div class="lv-nav"><button type="button" class="lv-round" id="lv-prev" aria-label="Previous slide">◀</button><span id="lv-pos"></span>' +
       '<button type="button" class="lv-round" id="lv-nxt" aria-label="Next slide">▶</button></div>' +
+      '<div id="lv-act"></div>' +
       '<div class="lv-card lv-here"><b id="lv-hn"></b><div class="lv-strip" id="lv-strip"></div></div>' +
       '<div class="lv-acts"><button type="button" class="btn lv-big" id="lv-hand">✋ Raise hand</button><button type="button" class="btn soft lv-big" id="lv-ask">Ask a question</button></div>' +
       '<form class="lv-card" id="lv-askf" hidden><label class="lv-fld">Your question<textarea id="lv-askt" maxlength="300" rows="3"></textarea></label>' +
@@ -199,17 +230,22 @@
     };
     const notes = store.json(notesKey()) || {};
     $('lv-note').oninput = () => { const v = $('lv-note').value; if (v.trim()) notes[VIEW] = v; else delete notes[VIEW]; store.setJson(notesKey(), notes); };
-    function go(n) { n = Math.max(1, Math.min(R.max, n)); FOLLOW = n === R.s; VIEW = n; draw(); }
+    $('lv-img').onload = () => { if (ACT && $('lv-ov') && !$('lv-ov').hidden) placeOver($('lv-ov'), $('lv-slide'), $('lv-img')); };
+    addEventListener('resize', onResize);
+    function onResize() { if (SCREEN !== 'live') return removeEventListener('resize', onResize); if (ACT && !$('lv-ov').hidden) placeOver($('lv-ov'), $('lv-slide'), $('lv-img')); }
+    function go(n) { n = Math.max(1, Math.min(R.max, n)); FOLLOW = n === R.s; VIEW = n; draw(true); }
     draw();
     tickT = setInterval(timer, 500);
+    liveView.draw = draw;
+    liveView.show = show;
     poll(my);
 
-    function draw() {
+    function draw(fetch) {
       if (SCREEN !== 'live') return;
       if (FOLLOW) VIEW = R.s;
       $('lv-meav').innerHTML = avatar(R.me, 36, 'You');
       $('lv-pos').innerHTML = '<b>Slide ' + VIEW + ' of ' + R.n + '</b> · ' + (FOLLOW ? '<span class="lv-ok">following live</span>' : '<button type="button" class="lv-link" id="lv-back2">Back to live</button>');
-      if ($('lv-back2')) $('lv-back2').onclick = () => { FOLLOW = true; draw(); };
+      if ($('lv-back2')) $('lv-back2').onclick = () => { FOLLOW = true; draw(true); };
       $('lv-prev').disabled = VIEW <= 1; $('lv-nxt').disabled = VIEW >= R.max;
       const ppl = R.people || [];
       $('lv-hn').textContent = 'Here now · ' + ppl.length;
@@ -217,14 +253,15 @@
       $('lv-hand').textContent = R.me.h ? '✋ Lower hand' : '✋ Raise hand';
       $('lv-hand').classList.toggle('soft', !!R.me.h);
       if (document.activeElement !== $('lv-note')) $('lv-note').value = notes[VIEW] || '';
-      timer(); show(VIEW);
+      timer(); show(VIEW, fetch); activity();
     }
-    async function show(n) {
+    async function show(n, fetch) {
       const k = R.t + ':' + n;
-      const [src] = await pics([k], (ks) => pcall('liveSlides', [ks]));
+      if (!IMG[k] && fetch) await pics([k], (ks) => pcall('liveSlides', [ks]));
       if (SCREEN !== 'live' || VIEW !== n) return;
-      $('lv-slide').innerHTML = src ? '<img src="' + src + '" alt="Slide ' + n + '">' : '<span class="lv-wait">Slide ' + n + ' is loading…</span>';
-      if (!src) setTimeout(() => { if (VIEW === n && SCREEN === 'live') show(n); }, 3000);
+      const img = $('lv-img');
+      if (IMG[k]) { if (img.getAttribute('src') !== IMG[k]) img.src = IMG[k]; img.hidden = false; img.alt = 'Slide ' + n; $('lv-sw').hidden = true; }
+      else { img.hidden = true; $('lv-sw').hidden = false; $('lv-sw').textContent = 'Slide ' + n + ' is loading…'; }
     }
     function timer() {
       const T = $('lv-timer'); if (!T) return;
@@ -232,40 +269,120 @@
       T.hidden = !R.tm || left < -5000;
       if (!T.hidden) { $('lv-tl').textContent = R.tm.l; $('lv-tv').textContent = left > 0 ? mmss(left) : 'Time!'; T.classList.toggle('over', left <= 0); }
     }
-    liveView.draw = draw;
+
+    // ------------------------------------------------ the activity on this slide
+    function activity() {
+      const a = (R.acts || []).filter((x) => x.s === VIEW)[0] || null;
+      if (a && ACT && a.i === ACT.i) return;                      // already on screen: keep what the teacher is doing
+      ACT = a;
+      const box = $('lv-act'), ov = $('lv-ov');
+      ov.hidden = true; ov.innerHTML = ''; ov.className = 'lv-ov'; ov.onpointerdown = ov.onpointermove = ov.onpointerup = ov.onpointercancel = null;
+      if (!a) { box.innerHTML = ''; return; }
+      const mine = ANS[a.i];
+      const sent = (on) => '<p class="lv-sent" id="lv-sent"' + (on ? '' : ' hidden') + '>✓ Sent. You can change your answer.</p>';
+      const head = '<div class="lv-row"><span class="lv-pill lime">' + { poll: 'POLL', text: 'YOUR ANSWER', drag: 'DRAG THE DOT', draw: 'DRAW' }[a.ty] + '</span></div><h2 class="lv-q">' + esc(a.p) + '</h2>';
+      const send = async (v, B) => {
+        if (B) B.disabled = true;
+        try { await pcall('liveAnswer', [a.i, v]); ANS[a.i] = a.ty === 'draw' ? 1 : v; store.setJson('live-ans-' + P.code, ANS); if ($('lv-sent')) $('lv-sent').hidden = false; }
+        catch (e) { toast(why(e)); }
+        if (B) B.disabled = false;
+      };
+      if (a.ty === 'poll') {
+        box.innerHTML = '<div class="lv-card">' + head + '<div class="lv-opts" role="radiogroup" aria-label="Options">' +
+          a.o.map((o, k) => '<button type="button" class="opt" role="radio" data-k="' + k + '" aria-checked="' + (mine === k) + '"><b>' + 'ABCDEF'[k] + '</b><span>' + esc(o) + '</span></button>').join('') + '</div>' + sent(mine != null) + '</div>';
+        box.querySelectorAll('.opt').forEach((b) => { b.onclick = () => { box.querySelectorAll('.opt').forEach((x) => x.setAttribute('aria-checked', String(x === b))); send(+b.dataset.k); }; });
+      } else if (a.ty === 'text') {
+        box.innerHTML = '<form class="lv-card" id="lv-tf">' + head + '<label class="lv-fld"><span class="sr">Your answer</span><textarea id="lv-tx" maxlength="280" rows="3">' + esc(mine || '') + '</textarea></label>' +
+          '<button class="btn" id="lv-txs">Send</button>' + sent(!!mine) + '</form>';
+        $('lv-tf').onsubmit = (ev) => { ev.preventDefault(); const v = $('lv-tx').value.trim(); if (!v) return toast('Write your answer first.'); send(v, $('lv-txs')); };
+      } else if (a.ty === 'drag') {
+        let pos = mine || [0.5, 0.5];
+        box.innerHTML = '<div class="lv-card">' + head + '<p class="lv-muted">Tap or drag on the slide to move your dot, then send.</p><button type="button" class="btn" id="lv-dgs">Send my dot</button>' + sent(!!mine) + '</div>';
+        ov.hidden = false; ov.classList.add('drag'); ov.innerHTML = '<span class="lv-dotme" id="lv-dm">' + (R.me.a ? '<img src="' + face(R.me.a) + '" alt="">' : '') + '</span>';
+        placeOver(ov, $('lv-slide'), $('lv-img'));
+        const put = () => { Object.assign($('lv-dm').style, { left: (pos[0] * 100) + '%', top: (pos[1] * 100) + '%' }); };
+        const at = (e) => { const b = ov.getBoundingClientRect(); pos = [Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), Math.min(1, Math.max(0, (e.clientY - b.top) / b.height))]; put(); if ($('lv-sent')) $('lv-sent').hidden = true; };
+        let down = false;
+        ov.onpointerdown = (e) => { down = true; ov.setPointerCapture(e.pointerId); at(e); };
+        ov.onpointermove = (e) => { if (down) at(e); };
+        ov.onpointerup = ov.onpointercancel = () => { down = false; };
+        put();
+        $('lv-dgs').onclick = () => send(pos, $('lv-dgs'));
+      } else if (a.ty === 'draw') {
+        const strokes = DRAWN[a.i] = DRAWN[a.i] || [];
+        let colour = '#141414', erase = false;
+        box.innerHTML = '<div class="lv-card">' + head + '<p class="lv-muted">Draw on the slide with your finger, then send.</p>' +
+          '<div class="lv-tools" role="toolbar" aria-label="Drawing tools">' + [['#141414', 'Black'], ['#D92D20', 'Red'], ['#2E6B3A', 'Green']].map((c, k) => '<button type="button" class="lv-sw' + (k ? '' : ' on') + '" data-c="' + c[0] + '" aria-label="' + c[1] + '" style="background:' + c[0] + '"></button>').join('') +
+          '<button type="button" class="lv-chip" id="lv-er">Eraser</button><button type="button" class="lv-chip" id="lv-un">Undo</button><button type="button" class="lv-chip" id="lv-cl">Clear</button></div>' +
+          '<button type="button" class="btn" id="lv-dws">Send my drawing</button>' + sent(!!mine) + '</div>';
+        ov.hidden = false; ov.classList.add('draw'); ov.innerHTML = '<canvas id="lv-cv" width="640" height="360"></canvas>';
+        placeOver(ov, $('lv-slide'), $('lv-img'));
+        const cv = $('lv-cv'), g = cv.getContext('2d');
+        const paint = () => {
+          g.clearRect(0, 0, cv.width, cv.height); g.lineCap = g.lineJoin = 'round';
+          strokes.forEach((s) => {
+            g.globalCompositeOperation = s.e ? 'destination-out' : 'source-over'; g.strokeStyle = s.c; g.lineWidth = s.e ? 26 : 5;
+            g.beginPath(); s.p.forEach((q, k) => (k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); if (s.p.length === 1) g.lineTo(s.p[0][0] + 0.1, s.p[0][1]); g.stroke();
+          });
+          g.globalCompositeOperation = 'source-over';
+        };
+        const pt = (e) => { const b = cv.getBoundingClientRect(); return [Math.round((e.clientX - b.left) / b.width * cv.width), Math.round((e.clientY - b.top) / b.height * cv.height)]; };
+        let cur = null;
+        cv.onpointerdown = (e) => { cv.setPointerCapture(e.pointerId); cur = { c: colour, e: erase, p: [pt(e)] }; strokes.push(cur); paint(); if ($('lv-sent')) $('lv-sent').hidden = true; };
+        cv.onpointermove = (e) => { if (cur) { cur.p.push(pt(e)); paint(); } };
+        cv.onpointerup = cv.onpointercancel = () => { cur = null; };
+        box.querySelectorAll('.lv-sw').forEach((b) => { b.onclick = () => { colour = b.dataset.c; erase = false; box.querySelectorAll('.lv-sw,#lv-er').forEach((x) => x.classList.toggle('on', x === b)); }; });
+        $('lv-er').onclick = () => { erase = true; box.querySelectorAll('.lv-sw,#lv-er').forEach((x) => x.classList.toggle('on', x.id === 'lv-er')); };
+        $('lv-un').onclick = () => { strokes.pop(); paint(); };
+        $('lv-cl').onclick = () => { strokes.length = 0; paint(); };
+        paint();
+        $('lv-dws').onclick = () => {
+          if (!strokes.length) return toast('Draw something first.');
+          let d = cv.toDataURL('image/png');
+          if (d.length > 90000) { const c2 = document.createElement('canvas'); c2.width = 400; c2.height = 225; c2.getContext('2d').drawImage(cv, 0, 0, 400, 225); d = c2.toDataURL('image/png'); }
+          if (d.length > 90000) return toast('This drawing is too big. Try fewer lines.');
+          send(d, $('lv-dws'));
+        };
+      }
+    }
   }
 
   async function poll(my) {
     if (my !== gen || !P) return;
     const beat = Date.now() - BEAT > 20000;
+    // slide pictures come with the answer: the slide on screen, the live one, and the next one (ready before it is shown)
+    const want = R ? [VIEW, R.s, R.s + 1].filter((n, i, a) => n >= 1 && n <= R.n && n <= R.max + 1 && a.indexOf(n) === i && !IMG[R.t + ':' + n]) : [];
     try {
-      const r = await pcall('livePoll', [VER, beat ? 1 : 0]);
+      const r = await pcall('livePoll', [VER, beat ? 1 : 0, want]);
       if (my !== gen) return;
       if (beat) BEAT = Date.now();
       if ($('lv-net')) $('lv-net').hidden = true;
       offset = r.now - Date.now();
+      if (r.pics) Object.assign(IMG, r.pics);
       if (!r.same) {
-        R = r; VER = r.v;
-        if (r.ph === 'post') return r.pre && !r.me.post ? test('post') : done();
+        R = Object.assign(r, { me: Object.assign({}, R.me, r.me, { pre: r.me.pre || R.me.pre, post: r.me.post || R.me.post }) }); VER = r.v;
         if (r.ph === 'ended') return done();
+        const d = due();
+        if (d) return test(d);
+        if (r.ph === 'post') return done();
         if (liveView.draw) liveView.draw();
-      }
+      } else if (r.pics && liveView.show) liveView.show(VIEW);
     } catch (e) {
       if (my !== gen) return;
       if (String(e.message) === 'NOT_AVAILABLE') return done(true);
       if ($('lv-net')) { $('lv-net').textContent = why(e); $('lv-net').hidden = false; }
     }
-    pollT = setTimeout(() => poll(my), document.hidden ? 10000 : 3000);
+    pollT = setTimeout(() => poll(my), document.hidden ? 10000 : 2000);
   }
 
   function done(gone) {
     stop(); SCREEN = 'done';
     const me = (R && R.me) || {}, notes = store.json(notesKey()) || {};
     const ns = Object.keys(notes).map(Number).sort((a, b) => a - b);
-    const sc = (x, label, cls) => '<div class="lv-scbox ' + cls + '"><small>' + label + '</small><b>' + (x ? x.s + '/' + x.t : '–') + '</b></div>';
+    const sc = scbox;
     L.innerHTML = '<div class="lv-phone"><div class="lv-done">' + avatar(Object.assign({}, me, { x: now() + 20000 }), 64, '') +
       '<span><b>' + (gone ? 'This session has ended' : 'Session finished') + '</b><small>Thank you' + (me.n ? ', ' + esc(me.n.split(' ')[0]) : '') + '! Your attendance is saved.</small></span></div>' +
-      (me.pre || me.post ? '<div class="lv-card"><b>Your tests</b><div class="lv-scores">' + sc(me.pre, 'Pre-test', '') + sc(me.post, 'Post-test', 'up') + '</div></div>' : '') +
+      ((me.pre && me.pre.t) || (me.post && me.post.t) ? '<div class="lv-card"><b>Your tests</b><div class="lv-scores">' + sc(me.pre, 'Pre-test', '') + sc(me.post, 'Post-test', 'up') + '</div></div>' : '') +
       (ns.length ? '<div class="lv-card"><b>My notes</b><div class="lv-notes">' + ns.map((n) => '<p><small>Slide ' + n + '</small>' + esc(notes[n]) + '</p>').join('') + '</div>' +
         '<button type="button" class="btn soft" id="lv-copy">Copy my notes</button></div>' : '') +
       '<button type="button" class="btn lv-big" id="lv-close">Close</button></div>';
@@ -283,8 +400,10 @@
   function toast(t) { if (window.STAR_APP && window.STAR_APP.toast) window.STAR_APP.toast(t); }
 
   // ================================================================ PRESENT SCREEN (facilitator)
-  let H = null, HVER = 0, NOTES = [], panelNotes = false, joinBig = true, endArmed = 0;
+  let H = null, HVER = 0, NOTES = [], panelNotes = false, joinBig = true, endArmed = 0, BIGD = '';
+  const DRAWS = {};                                   // drawings received per activity: { id: {img, n, a} }
   const hcall = (fn, args) => call(fn, [store.get('tok'), H ? H.c : ''].concat(args || []));
+  const TYN = { poll: 'Poll', text: 'Text', drag: 'Draggable', draw: 'Draw' };
 
   async function start(trainingId) {
     const r = await call('liveStart', [store.get('tok'), trainingId]);
@@ -298,15 +417,19 @@
     try { r = await call('liveHost', [store.get('tok'), code, 0]); }
     catch (e) { L.innerHTML = '<div class="lv-pres"><div class="lv-card lv-center"><p>' + esc(why(e)) + '</p><button type="button" class="btn" id="lv-x">Back</button></div></div>'; $('lv-x').onclick = () => close('#/'); return; }
     if (my !== gen) return;
-    H = r; HVER = r.v; offset = r.now - Date.now(); panelNotes = false; joinBig = r.ph === 'live' && r.people.length < 3; endArmed = 0;
+    H = r; HVER = r.v; offset = r.now - Date.now(); panelNotes = false; joinBig = r.ph === 'live' && r.people.length < 3; endArmed = 0; BIGD = '';
     call('material', [store.get('tok'), H.t]).then((m) => { NOTES = m.notes || []; if (SCREEN === 'present') drawP(); }, () => { NOTES = []; });
-    const url = location.origin + location.pathname + '#/join/' + H.c;
+    // get every slide picture ready on the server while people join, so phones get them fast
+    (async () => { let from = 1; while (from && my === gen) { try { from = (await hcall('liveWarm', [from])).next; } catch (e) { break; } } })();
+    const url = location.origin + location.pathname.replace(/index\.html$/, '') + '#/join/' + H.c;
     let qr = '';
     try { const q = window.qrcode(0, 'M'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true, alt: 'QR code to join' }); } catch (e) {}
     L.innerHTML = '<div class="lv-pres">' +
       '<div class="lv-ptop"><img src="img/logo.webp" alt="STAR Library" class="lv-plogo"><span class="lv-ptt"><small>' + esc(H.t) + '</small><b>' + esc(H.tt) + '</b></span>' +
       '<span class="lv-pill lime" id="lv-ph"></span><button type="button" class="lv-icon" id="lv-fs" aria-label="Full screen">⛶</button><button type="button" class="lv-icon" id="lv-out" aria-label="Leave present screen">✕</button></div>' +
-      '<div class="lv-pbody"><div class="lv-pmain"><div class="lv-pslide" id="lv-ps"><span class="lv-wait">Loading slide…</span><div class="lv-ptimer" id="lv-pt" hidden><small id="lv-ptl"></small><b id="lv-ptv"></b></div></div>' +
+      '<div class="lv-pbody"><div class="lv-pmain"><div class="lv-pslide" id="lv-ps"><span class="lv-wait">Loading slide…</span><div class="lv-res" id="lv-res" hidden></div>' +
+      '<div class="lv-ptimer" id="lv-pt" hidden><small id="lv-ptl"></small><b id="lv-ptv"></b></div></div>' +
+      '<div class="lv-actbar" id="lv-ab" hidden></div>' +
       '<div class="lv-pnotes" id="lv-pn" hidden></div>' +
       '<div class="lv-pbar"><button type="button" class="lv-round" id="lv-pprev" aria-label="Previous slide">◀</button><b id="lv-ppos"></b><button type="button" class="lv-round" id="lv-pnext" aria-label="Next slide">▶</button>' +
       '<span class="lv-grow"></span><span class="lv-tbtns" id="lv-tb"></span>' +
@@ -314,8 +437,7 @@
       '<aside class="lv-pside"><div class="lv-joincard" id="lv-jc"><span class="lv-qr">' + qr + '</span><span><small>Join on your phone</small><b>' + H.c.slice(0, 3) + ' ' + H.c.slice(3) + '</b><small>Scan, or open STAR Library › Join</small></span></div>' +
       '<div class="lv-card" id="lv-hands"></div><div class="lv-card" id="lv-qs"></div><div class="lv-card lv-grow" id="lv-ppl"></div></aside></div>' +
       '<div class="lv-bigjoin" id="lv-bj" hidden><div><span class="lv-qr">' + qr + '</span><p>Join on your phone</p><b>' + H.c.slice(0, 3) + ' ' + H.c.slice(3) + '</b>' +
-      '<small>' + esc(url.replace(/^https?:\/\//, '').replace(/#.*$/, '')) + ' › Join</small><button type="button" class="btn" id="lv-bjx">Start</button></div></div>' +
-      '<div class="lv-sum" id="lv-sum" hidden></div></div>';
+      '<small>' + esc(url.replace(/^https?:\/\//, '').replace(/#.*$/, '')) + ' › Join</small><button type="button" class="btn" id="lv-bjx">Start</button></div></div></div>';
     $('lv-pprev').onclick = () => slideTo(H.s - 1);
     $('lv-pnext').onclick = () => slideTo(H.s + 1);
     $('lv-pnt').onclick = () => { panelNotes = !panelNotes; drawP(); };
@@ -326,14 +448,17 @@
     $('lv-pend').onclick = endClick;
     keyFn = (e) => {
       if (SCREEN !== 'present' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return;
+      if (e.key === 'Escape' && BIGD) { BIGD = ''; return results(); }
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); slideTo(H.s + 1); }
       else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); slideTo(H.s - 1); }
     };
     addEventListener('keydown', keyFn);
+    addEventListener('resize', pResize);
     drawP();
     tickT = setInterval(ptimer, 500);
     hpoll(my);
   }
+  function pResize() { if (SCREEN !== 'present') return removeEventListener('resize', pResize); results(); }
 
   async function ctl(action, arg) {
     try { await hcall('liveCtl', [action, arg]); HVER = 0; } catch (e) { toast(why(e)); }
@@ -342,25 +467,24 @@
     if (!H || H.ph !== 'live') return;
     n = Math.max(1, Math.min(H.n, n));
     if (n === H.s) return;
-    H.s = n; drawP(); ctl('slide', n);
+    H.s = n; H.act = null; BIGD = ''; drawP(); ctl('slide', n);
   }
+  const needPost = () => H.pre && !H.postAt;          // post-test at the end (not on a slide)
   function endClick() {
-    if (H.ph === 'live') {
-      if (Date.now() - endArmed > 4000) { endArmed = Date.now(); $('lv-pend').textContent = 'Tap again to end'; setTimeout(drawP, 4100); return; }
-      endArmed = 0; H.ph = 'post'; drawP(); ctl('post');
-    } else if (H.ph === 'post') {
-      if (Date.now() - endArmed > 4000) { endArmed = Date.now(); $('lv-pend').textContent = 'Tap again to close'; setTimeout(drawP, 4100); return; }
-      endArmed = 0; H.ph = 'ended'; $('lv-pend').disabled = true; ctl('end').then(summary);
-    }
+    const armed = Date.now() - endArmed < 4000;
+    if (!armed) { endArmed = Date.now(); drawP(); setTimeout(drawP, 4100); return; }
+    endArmed = 0;
+    if (H.ph === 'live' && needPost()) { H.ph = 'post'; drawP(); ctl('post'); return; }
+    H.ph = 'ended'; $('lv-pend').disabled = true; ctl('end').then(summary);
   }
 
   function drawP() {
     if (SCREEN !== 'present' || !H) return;
+    const armed = Date.now() - endArmed < 4000;
     $('lv-ph').innerHTML = H.ph === 'live' ? '<i class="lv-dot red"></i>LIVE · ' + mmss(now() - H.st).replace(/:\d\d$/, '') + ' min' : 'POST-TEST';
     $('lv-ppos').textContent = H.s + ' / ' + H.n;
     $('lv-pprev').disabled = H.ph !== 'live' || H.s <= 1; $('lv-pnext').disabled = H.ph !== 'live' || H.s >= H.n;
-    const armed = Date.now() - endArmed < 4000;
-    $('lv-pend').textContent = H.ph === 'live' ? (armed ? 'Tap again to end' : H.pre ? 'End → Post-test' : 'End session') : (armed ? 'Tap again to close' : 'Close session');
+    $('lv-pend').textContent = armed ? (H.ph === 'live' && needPost() ? 'Tap again to end' : 'Tap again to close') : H.ph === 'live' ? (needPost() ? 'End → Post-test' : 'End session') : 'Close session';
     $('lv-tb').innerHTML = H.ph !== 'live' ? '' : H.tm ? '<button type="button" class="btn soft" id="lv-tstop">Stop timer</button>'
       : '<span class="lv-tlbl">Timer</span>' + [1, 3, 5, 10].map((m) => '<button type="button" class="lv-chip" data-m="' + m + '">' + m + '′</button>').join('');
     L.querySelectorAll('#lv-tb .lv-chip').forEach((b) => { b.onclick = () => { H.tm = { l: 'Timer', e: now() + b.dataset.m * 60000 }; drawP(); ctl('timer', { sec: b.dataset.m * 60, label: 'Timer' }); }; });
@@ -376,17 +500,74 @@
     const qs = H.q || [];
     $('lv-qs').innerHTML = '<b>Questions · ' + qs.length + '</b>' + (qs.length ? qs.slice(-3).reverse().map((q) => '<div class="lv-qitem"><p>"' + esc(q.tx) + '"</p><small>' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s) + '</small><button type="button" class="lv-chip" data-cq="' + q.i + '">Done</button></div>').join('') : '<p class="lv-muted">Questions from phones show here.</p>');
     L.querySelectorAll('[data-cq]').forEach((b) => { b.onclick = () => { H.q = H.q.filter((x) => x.i !== b.dataset.cq); drawP(); ctl('clearq', b.dataset.cq); }; });
-    const done = H.ph === 'post' ? ppl.filter((p) => p.post).length : 0;
-    $('lv-ppl').innerHTML = '<b>' + (H.ph === 'post' ? 'Post-test · ' + done + ' of ' + ppl.length + ' done' : 'Here now · ' + (H.here != null ? H.here : ppl.length)) + '</b><div class="lv-grid">' +
-      ppl.map((p) => '<span class="lv-gp' + (p.on ? '' : ' away') + (H.ph === 'post' && p.post ? ' fin' : '') + '">' + avatar(p, 44, p.n + (p.c ? ' · ' + p.c : '')) + '<small>' + esc(p.n.split(' ')[0]) + '</small></span>').join('') + '</div>';
-    ptimer(); pslide();
+    // people, or test progress while a test is open
+    const postOn = H.pre && (H.ph === 'post' || (H.postAt && H.s >= H.postAt)), preOn = H.pre && !postOn && H.s === (H.preAt || 1) && H.ph === 'live';
+    const fin = (p) => (postOn ? p.post : preOn ? p.pre || p.sk : 0);
+    $('lv-ppl').innerHTML = '<b>' + (postOn ? 'Post-test · ' + ppl.filter((p) => p.post).length + ' of ' + ppl.length + ' done' : preOn ? 'Pre-test · ' + ppl.filter((p) => p.pre || p.sk).length + ' of ' + ppl.length + ' done' : 'Here now · ' + (H.here != null ? H.here : ppl.length)) + '</b><div class="lv-grid">' +
+      ppl.map((p) => '<span class="lv-gp' + (p.on ? '' : ' away') + (fin(p) ? ' fin' : '') + '">' + avatar(p, 44, p.n + (p.c ? ' · ' + p.c : '')) + '<small>' + esc(p.n.split(' ')[0]) + '</small></span>').join('') + '</div>';
+    ptimer(); pslide(); actBar();
+  }
+
+  // ---------------------------------------------------------------- the activity on the current slide
+  function actBar() {
+    const a = (H.acts || []).filter((x) => x.s === H.s)[0], A = $('lv-ab');
+    if (!a || H.ph !== 'live') { A.hidden = true; $('lv-res').hidden = true; return; }
+    const r = H.act && H.act.i === a.i ? H.act : { k: 0, of: (H.people || []).length };
+    const shown = !!(H.show || {})[a.i];
+    A.hidden = false;
+    A.innerHTML = '<span class="lv-pill lime">' + TYN[a.ty].toUpperCase() + '</span><b class="lv-ap">' + esc(a.p) + '</b><span class="lv-ak">' + r.k + ' of ' + r.of + ' answered</span>' +
+      '<label class="lv-switch"><input type="checkbox" id="lv-nm"' + (H.names ? ' checked' : '') + '> Show names</label>' +
+      '<button type="button" class="btn' + (shown ? ' soft' : '') + '" id="lv-show">' + (shown ? 'Hide results' : 'Show results') + '</button>';
+    $('lv-show').onclick = () => { H.show = Object.assign({}, H.show); H.show[a.i] = !shown; BIGD = ''; drawP(); ctl('show', { id: a.i, on: !shown }); };
+    $('lv-nm').onchange = () => { H.names = $('lv-nm').checked; if (DRAWS[a.i]) delete DRAWS[a.i]; drawP(); ctl('names', H.names); };
+    results();
+  }
+  function results() {
+    if (SCREEN !== 'present' || !H) return;
+    const a = (H.acts || []).filter((x) => x.s === H.s)[0], R2 = $('lv-res');
+    if (!a || !(H.show || {})[a.i] || H.ph !== 'live') { R2.hidden = true; R2.innerHTML = ''; return; }
+    const r = H.act && H.act.i === a.i ? H.act : null;
+    R2.hidden = false; R2.className = 'lv-res ' + a.ty + (a.ty === 'draw' && BIGD ? ' big' : '');
+    const label = (x) => (x.n ? '<small>' + esc(x.n) + '</small>' : '');
+    if (a.ty === 'poll') {
+      const c = (r && r.c) || a.o.map(() => 0), tot = c.reduce((x, y) => x + y, 0) || 1, top = Math.max.apply(null, c);
+      R2.innerHTML = '<div class="lv-rbox"><h3>' + esc(a.p) + '</h3>' + a.o.map((o, k) => '<div class="lv-bar' + (c[k] && c[k] === top ? ' top' : '') + '"><span>' + esc(o) + '</span><i style="width:' + Math.round(100 * c[k] / tot) + '%"></i><b>' + c[k] + '</b></div>').join('') + '</div>';
+    } else if (a.ty === 'text') {
+      const list = (r && r.r) || [];
+      R2.innerHTML = '<div class="lv-rbox"><h3>' + esc(a.p) + '</h3><div class="lv-wall">' + (list.length ? list.map((x) => '<div class="lv-sticky"><p>' + esc(x.tx) + '</p>' + label(x) + '</div>').join('') : '<p class="lv-muted">No answers yet.</p>') + '</div></div>';
+    } else if (a.ty === 'drag') {
+      R2.innerHTML = '<div class="lv-dots" id="lv-dots">' + ((r && r.r) || []).map((x) => '<span class="lv-pdot" style="left:' + (x.x * 100) + '%;top:' + (x.y * 100) + '%">' + (x.a ? '<img src="' + face(x.a) + '" alt="">' : '') + (x.n ? '<small>' + esc(x.n.split(' ')[0]) + '</small>' : '') + '</span>').join('') + '</div>';
+      const img = $('lv-ps').querySelector('img.lv-simg');
+      placeOver($('lv-dots'), $('lv-ps'), img);
+    } else if (a.ty === 'draw') {
+      const got = DRAWS[a.i] = DRAWS[a.i] || {}, ids = Object.keys(got), slide = IMG[H.t + ':' + H.s] || '';
+      if (BIGD && got[BIGD]) {
+        R2.innerHTML = '<div class="lv-dbig" id="lv-dbig"><img src="' + got[BIGD].img + '" alt="Drawing">' + (got[BIGD].n ? '<small>' + esc(got[BIGD].n) + '</small>' : '') + '<button type="button" class="btn soft" id="lv-dback">Back to all drawings</button></div>';
+        placeOver($('lv-dbig'), $('lv-ps'), $('lv-ps').querySelector('img.lv-simg'));
+        $('lv-dback').onclick = () => { BIGD = ''; results(); };
+      } else {
+        R2.innerHTML = '<div class="lv-rbox"><h3>' + esc(a.p) + ' · ' + ids.length + ' drawing' + (ids.length === 1 ? '' : 's') + '</h3><div class="lv-gal">' +
+          ids.map((id) => '<button type="button" class="lv-dt" data-d="' + id + '" style="background-image:url(\'' + slide + '\')"><img src="' + got[id].img + '" alt="Drawing' + (got[id].n ? ' by ' + esc(got[id].n) : '') + '">' + (got[id].n ? '<small>' + esc(got[id].n) + '</small>' : '') + '</button>').join('') +
+          (ids.length ? '' : '<p class="lv-muted">Drawings appear here as they arrive.</p>') + '</div></div>';
+        R2.querySelectorAll('[data-d]').forEach((b) => { b.onclick = () => { BIGD = b.dataset.d; results(); }; });
+      }
+      if (r && r.k > ids.length && !results.busy) {
+        results.busy = true;
+        hcall('liveDraws', [a.i, ids]).then((list) => { list.forEach((d) => { got[d.id] = d; }); }, () => {}).then(() => { results.busy = false; if (list2changed()) results(); });
+      }
+      function list2changed() { return Object.keys(got).length !== ids.length; }
+    }
   }
   async function pslide() {
     const n = H.s, keys = [n, n + 1, n + 2].filter((x) => x <= H.n).map((x) => H.t + ':' + x);
     const [src] = await pics(keys, (ks) => call('slides', [store.get('tok'), ks]));
     if (SCREEN !== 'present' || H.s !== n) return;
-    const img = $('lv-ps').querySelector('img');
-    if (src) { if (img) img.src = src; else $('lv-ps').insertAdjacentHTML('afterbegin', '<img src="' + src + '" alt="Slide ' + n + '">'); const w = $('lv-ps').querySelector('.lv-wait'); if (w) w.remove(); }
+    const img = $('lv-ps').querySelector('img.lv-simg');
+    if (src) {
+      if (img) { if (img.getAttribute('src') !== src) img.src = src; }
+      else { $('lv-ps').insertAdjacentHTML('afterbegin', '<img class="lv-simg" src="' + src + '" alt="Slide ' + n + '">'); $('lv-ps').querySelector('img.lv-simg').onload = results; }
+      const w = $('lv-ps').querySelector('.lv-wait'); if (w) w.remove();
+    }
   }
   function ptimer() {
     const T = $('lv-pt'); if (!T || !H) return;
@@ -400,20 +581,24 @@
       const r = await hcall('liveHost', [HVER]);
       if (my !== gen) return;
       offset = r.now - Date.now();
-      if (r.same) { if (H.here !== r.here) { H.here = r.here; drawP(); } }
-      else { H = r; HVER = r.v; if (H.ph === 'ended') return summary(); drawP(); }
+      const actKey = (x) => JSON.stringify(x || null);
+      if (r.same) {
+        const changed = H.here !== r.here || actKey(H.act) !== actKey(r.act);
+        H.here = r.here; H.act = r.act;
+        if (changed) drawP();
+      } else { H = r; HVER = r.v; if (H.ph === 'ended') return summary(); drawP(); }
     } catch (e) { if (my !== gen) return; if (String(e.message) === 'NOT_AVAILABLE') return summary(); }
-    pollT = setTimeout(() => hpoll(my), 2500);
+    pollT = setTimeout(() => hpoll(my), 2000);
   }
   function summary() {
     stop(); SCREEN = 'summary';
     const ppl = (H && H.people) || [];
-    const avg = (k) => { const xs = ppl.map((p) => p[k]).filter(Boolean); return xs.length ? Math.round(100 * xs.reduce((a, x) => a + x.s / x.t, 0) / xs.length) + '%' : '–'; };
+    const avg = (k) => { const xs = ppl.map((p) => p[k]).filter((x) => x && x.t); return xs.length ? Math.round(100 * xs.reduce((a, x) => a + x.s / x.t, 0) / xs.length) + '%' : '–'; };
     L.innerHTML = '<div class="lv-pres"><div class="lv-sumcard"><h1 class="lv-h1">Session closed</h1><p class="lv-muted">' + esc((H ? H.t + ' · ' + H.tt : '')) + '</p>' +
       '<div class="lv-scores"><div class="lv-scbox"><small>Teachers</small><b>' + ppl.length + '</b></div><div class="lv-scbox"><small>Pre-test average</small><b>' + avg('pre') + '</b></div><div class="lv-scbox up"><small>Post-test average</small><b>' + avg('post') + '</b></div></div>' +
       '<div class="lv-sumlist">' + ppl.map((p) => '<div class="lv-person">' + avatar(p, 32) + '<span><b>' + esc(p.n) + '</b>' + (p.c ? ' · ' + esc(p.c) : '') + '</span><small>' +
-        (p.pre ? 'Pre ' + p.pre.s + '/' + p.pre.t : '') + (p.post ? ' · Post ' + p.post.s + '/' + p.post.t : '') + '</small></div>').join('') + '</div>' +
-      '<p class="lv-muted">Attendance, test scores and questions are saved. L&amp;D sees them in Editor › Sessions.</p><button type="button" class="btn lv-big" id="lv-sx">Back to STAR Library</button></div></div>';
+        (p.pre && p.pre.t ? 'Pre ' + p.pre.s + '/' + p.pre.t : '') + (p.post && p.post.t ? ' · Post ' + p.post.s + '/' + p.post.t : '') + '</small></div>').join('') + '</div>' +
+      '<p class="lv-muted">Attendance, answers, test scores and questions are saved. L&amp;D sees them in Editor › Sessions.</p><button type="button" class="btn lv-big" id="lv-sx">Back to STAR Library</button></div></div>';
     $('lv-sx').onclick = () => close('#/');
   }
 

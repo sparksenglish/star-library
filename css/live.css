@@ -20,9 +20,9 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-av{border-radius:50%;object-fit:contain;flex:none;display:inline-block}
 .lv-ini{display:inline-grid;place-items:center;background:var(--soft2);color:var(--ink);font-weight:700;font-size:13px}
 .lv-big{min-height:52px;font-size:16px}
-.lv-round{width:44px;height:44px;border-radius:99px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;cursor:pointer;flex:none}
+.lv-round{width:44px;height:44px;border-radius:99px;border:1.5px solid var(--line);background:var(--soft);color:var(--ink);font-size:16px;cursor:pointer;flex:none}
 .lv-round:disabled{opacity:.4;cursor:default}
-.lv-chip{border:1.5px solid var(--line);background:var(--soft);color:var(--ink);border-radius:99px;padding:6px 12px;font:700 12px var(--font);cursor:pointer;min-height:32px}
+.lv-chip{border:1.5px solid var(--line);background:var(--soft);color:var(--ink);border-radius:99px;padding:0 14px;font:700 14px var(--font);cursor:pointer;min-height:36px}
 .lv-fld{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;border:0;padding:0;margin:0}
 .lv-fld legend{padding:0;margin-bottom:6px}
 .lv-fld input,.lv-fld textarea{height:48px;border:1.5px solid var(--line);border-radius:14px;padding:0 14px;font:400 16px var(--font);background:var(--card);color:var(--ink)}
@@ -57,8 +57,9 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-timer span{flex:1;color:var(--lime);font-weight:500;font-size:14px}.lv-timer b{font-size:24px;font-weight:800}
 .lv-timer.over b{color:#FFB4A8}
 .lv-net{background:#FDECEA;color:#8A1C12;border-radius:12px;padding:8px 12px;font-size:14px}
-.lv-slide{background:#fff;border-radius:16px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;box-shadow:var(--sh)}
-.lv-slide img{width:100%;height:100%;object-fit:contain;display:block}
+.lv-slide{position:relative;background:#fff;border-radius:16px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;box-shadow:var(--sh)}
+.lv-slide>img{width:100%;height:100%;object-fit:contain;display:block;grid-area:1/1}
+.lv-slide>.lv-wait{grid-area:1/1}
 .lv-nav{display:flex;align-items:center;gap:8px}.lv-nav span{flex:1;text-align:center;font-size:14px}
 .lv-ok{color:var(--brand);font-weight:700}
 .lv-here{padding:12px 14px;gap:8px}
@@ -82,7 +83,7 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-pbody{flex:1;display:flex;gap:14px;min-height:0}
 .lv-pmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
 .lv-pslide{position:relative;flex:1;min-height:300px;background:#fff;border-radius:18px;display:grid;place-items:center;overflow:hidden}
-.lv-pslide img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
+.lv-pslide img.lv-simg{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
 .lv-ptimer{position:absolute;top:14px;right:14px;background:#141414;color:#fff;border-radius:14px;padding:8px 16px;display:flex;flex-direction:column;align-items:center;z-index:1}
 .lv-ptimer small{color:var(--lime);font-size:12px;font-weight:700;text-transform:uppercase}.lv-ptimer b{font-size:36px;font-weight:800;line-height:1}
 .lv-ptimer.over b{color:#FFB4A8}
@@ -115,3 +116,43 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
   .lv-pbody{flex-direction:column}.lv-pside{width:auto}
   .lv-pslide{min-height:0;aspect-ratio:16/9;flex:none}
 }
+
+/* ---------- slide activities: phone ---------- */
+.lv-ov{position:absolute;touch-action:none}
+.lv-ov.drag{cursor:crosshair;background:#2E6B3A0d}
+.lv-dotme{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px #fff,0 4px 12px #0004;display:grid;place-items:center;pointer-events:none}
+.lv-dotme img{width:36px;height:36px}
+.lv-ov.draw canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.lv-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lv-sw{width:36px;height:36px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1.5px var(--line);cursor:pointer}
+.lv-sw.on{box-shadow:0 0 0 3px var(--brand)}
+.lv-chip.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.lv-sent{margin:0;color:var(--brand);font-weight:700;font-size:14px}
+
+/* ---------- slide activities: present screen ---------- */
+.lv-actbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border-radius:14px;padding:8px 10px 8px 14px}
+.lv-ap{flex:1;min-width:160px}.lv-ak{font-size:14px;color:var(--muted);font-weight:700}
+.lv-switch{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;cursor:pointer}
+.lv-switch input{width:20px;height:20px;accent-color:var(--brand)}
+.lv-res{position:absolute;inset:0;z-index:1}
+.lv-res.poll,.lv-res.text,.lv-res.draw:not(.big){background:#fff;overflow:auto;padding:24px;box-sizing:border-box}
+.lv-rbox{display:flex;flex-direction:column;gap:12px;max-width:1100px;margin:0 auto}
+.lv-rbox h3{margin:0;font-size:28px;font-weight:800}
+.lv-bar{display:grid;grid-template-columns:minmax(120px,30%) 1fr 48px;align-items:center;gap:12px;font-size:20px;font-weight:700}
+.lv-bar i{display:block;height:40px;min-width:4px;border-radius:10px;background:var(--soft2)}
+.lv-bar.top i{background:var(--brand)}.lv-bar b{font-size:24px;text-align:right}
+.lv-wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.lv-sticky{background:#FFF6B8;border-radius:14px;padding:14px;box-shadow:0 4px 10px #0000001a;display:flex;flex-direction:column;gap:6px}
+.lv-sticky p{margin:0;font-size:18px;font-weight:500}.lv-sticky small{color:#5c5530;font-weight:700}
+.lv-dots{position:absolute}
+.lv-pdot{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px #fff,0 3px 8px #0004;display:grid;place-items:center}
+.lv-pdot img{width:34px;height:34px}
+.lv-pdot small{position:absolute;top:44px;left:50%;transform:translateX(-50%);background:#141414;color:#fff;font-size:12px;font-weight:700;padding:2px 6px;border-radius:6px;white-space:nowrap}
+.lv-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.lv-dt{position:relative;aspect-ratio:16/9;border:2px solid var(--line);border-radius:12px;background:#fff center/contain no-repeat;padding:0;cursor:pointer;overflow:hidden}
+.lv-dt img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lv-dt small{position:absolute;left:6px;bottom:6px;background:#141414;color:#fff;font-size:12px;font-weight:700;padding:2px 6px;border-radius:6px}
+.lv-dbig{position:absolute}
+.lv-dbig img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lv-dbig small{position:absolute;left:12px;bottom:12px;background:#141414;color:#fff;font-weight:700;padding:4px 10px;border-radius:8px}
+.lv-dbig .btn{position:absolute;right:12px;bottom:12px}

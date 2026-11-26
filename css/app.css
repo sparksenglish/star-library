@@ -316,3 +316,11 @@ h1.big em{font-style:normal;color:var(--brand)}
 @media (min-width:1024px) and (hover:hover){.nav a:hover{background:var(--soft)}}
 @media (prefers-reduced-motion:reduce){.book,.fd .papers i{transition:none}.book:hover{transform:none}}
 .live-join{align-self:flex-start}
+
+/* Buttons: one style everywhere (main = lime pill, second = grey pill, icon = round grey; 44 px tall) */
+.btn{font-weight:700}
+.btn.line{background:var(--soft);border:1.5px solid var(--line);color:var(--ink)}
+.ibtn{background:var(--soft)}
+.trow .btn,.gcard .btn{min-height:44px}
+.feat .go{font-size:14px;font-weight:700;min-height:40px}
+.chip{font-weight:700}
