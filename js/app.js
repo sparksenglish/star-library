@@ -422,7 +422,7 @@
       if (!document.querySelector('#view .sec, #view section')) { if (t.m && MOD[t.m]) moduleView(t.m); else stageView('OTHER'); }
       window.STAR_VIEW.open(t, { module: MOD[t.m] || null, title: trTitle(t), recFor, ready, lib: LIBAPI, api, toast, back: lastPage, fromApp: routed > 0,
         canHost: ME && (ME.role === 'L&D' || ME.role === 'Centre'),
-        host: async (B) => { B.disabled = true; B.textContent = 'Starting…'; try { await window.STAR_LIVE.start(t.i); } catch (e) { toast(why(e)); B.disabled = false; B.textContent = 'Go live'; } } });
+        host: async (B) => { B.disabled = true; try { if (!(await window.STAR_LIVE.start(t.i))) B.disabled = false; } catch (e) { toast(why(e)); B.disabled = false; } } });
       return;
     }
     window.STAR_VIEW.close();

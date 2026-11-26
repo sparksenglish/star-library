@@ -17,9 +17,14 @@
    * Errors are Error objects whose message is a short code (WRONG_PASSWORD, SIGNED_OUT, OFFLINE…).
    * A plain-text POST is a "simple request", so the browser sends it without a CORS pre-check.
    */
+  // Google allows only 30 requests running at once for the whole app. When it is too busy it answers with a
+  // page instead of JSON (nothing ran), or BUSY: wait a little (a different time on each phone) and try again.
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const jitter = (n) => 1200 * n + Math.random() * 2000;
   async function call(fn, args, tries) {
     if (window.STAR_MOCK) return window.STAR_MOCK(fn, args || []);
     if (!CFG.api) throw new Error('NO_API');
+    tries = tries || 0;
     let res;
     const ac = window.AbortController ? new AbortController() : null;
     const timer = ac ? setTimeout(() => ac.abort(), 45000) : 0;   // never wait forever
@@ -29,15 +34,20 @@
     } catch (e) {
       clearTimeout(timer);
       if (e && e.name === 'AbortError') throw new Error('SLOW');
-      if ((tries || 0) < 1) { await new Promise((r) => setTimeout(r, 800)); return call(fn, args, 1); }
+      if (tries < 1) { await pause(800); return call(fn, args, tries + 1); }
       throw new Error('OFFLINE');
     }
     let body;
     try { body = await res.json(); }
-    catch (e) { clearTimeout(timer); throw new Error(e && e.name === 'AbortError' ? 'SLOW' : 'SERVER_ERROR'); }
+    catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === 'AbortError') throw new Error('SLOW');
+      if (tries < 3) { await pause(jitter(tries + 1)); return call(fn, args, tries + 1); }
+      throw new Error('SERVER_ERROR');
+    }
     clearTimeout(timer);
-    // BUSY = someone else was saving and nothing was written: try once more by itself
-    if (body && body.error === 'BUSY' && !(tries >= 2)) { await new Promise((r) => setTimeout(r, 2000)); return call(fn, args, 2); }
+    // BUSY = nothing was written: try again by itself
+    if (body && body.error === 'BUSY' && tries < 3) { await pause(jitter(tries + 1)); return call(fn, args, tries + 1); }
     if (!body || !body.ok) throw new Error((body && body.error) || 'SERVER_ERROR');
     return body.data;
   }

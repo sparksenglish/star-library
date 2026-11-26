@@ -80,7 +80,7 @@
     const last = store.json('live-me') || {};
     let pick = last.a || '';
     L.innerHTML = '<div class="lv-phone"><div class="lv-head"><a href="#/" class="btn soft lv-home" id="lv-home">← ' + (store.get('tok') ? 'Home' : 'Sign in') + '</a><a href="#/" class="lv-logolink" id="lv-logo" aria-label="STAR Library home"><img src="img/logo.webp" alt="STAR Library" class="lv-logo"></a></div>' +
-      '<form class="lv-card" id="lv-join" novalidate><h1 class="lv-h1">Join live session</h1>' +
+      '<form class="lv-card" id="lv-join" novalidate><h1 class="lv-h1">Join training</h1>' +
       '<label class="lv-fld">Session code<input id="lv-code" class="lv-codein" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="123 456" value="' + esc(code) + '"></label>' +
       '<label class="lv-fld">Your name<input id="lv-name" autocomplete="name" maxlength="40" placeholder="e.g. Siti Rahma" value="' + esc(last.n || '') + '"></label>' +
       '<label class="lv-fld">Centre <span class="lv-opt">(optional, e.g. BDG)</span><input id="lv-ce" autocomplete="off" maxlength="10" value="' + esc(last.c || '') + '"></label>' +
@@ -122,13 +122,28 @@
     const d = due();
     if (d) return test(d);
     if (r.ph === 'post') return done();
-    liveView();
+    follow();
   }
   function next() {           // after a test: back to the session, or the end
     const d = due();
     if (d) return test(d);
-    if (R.ph === 'live') return liveView();
+    if (R.ph === 'live') return follow();
     done();
+  }
+  const follow = () => (R && R.on ? waitView() : liveView());
+
+  /** Online sessions (tests only): nothing to follow, so the phone waits here and checks in now and then. */
+  function waitView() {
+    stop(); const my = gen; SCREEN = 'wait';
+    liveView.draw = null; liveView.show = null;
+    const did = R.me.pre;
+    L.innerHTML = '<div class="lv-phone">' + meBar(R.t + ' · ' + R.tt) + '<div class="lv-card lv-center lv-waitc">' +
+      avatar(Object.assign({}, R.me, { x: did ? now() + 20000 : 0 }), 72, '') +
+      '<b class="lv-h2">' + (did ? 'Pre-test done ✓' : 'You\'re in!') + '</b>' +
+      '<p>' + (did ? 'Your answers are saved. You\'ll see your score after the post-test.' : 'The pre-test is closed now.') + '</p>' +
+      '<p class="lv-muted">Wait for the trainer to open the <b>post-test</b>. Keep this page open; it opens by itself.</p>' +
+      '<p class="lv-net" id="lv-net" hidden></p></div></div>';
+    poll(my);
   }
 
   // ---------------------------------------------------------------- pre / post test
@@ -136,7 +151,7 @@
     stop(); const my = gen; SCREEN = which;
     L.innerHTML = '<div class="lv-phone"><p class="lv-wait">Opening the ' + which + '-test…</p></div>';
     let t;
-    try { t = await pcall('liveTest', [which]); } catch (e) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = R.me.post || { s: 0, t: 0 }; return R.ph === 'live' ? liveView() : done(String(e.message) === 'NOT_AVAILABLE'); }
+    try { t = await pcall('liveTest', [which]); } catch (e) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = R.me.post || { s: 0, t: 0 }; return R.ph === 'live' ? follow() : done(String(e.message) === 'NOT_AVAILABLE'); }
     if (my !== gen) return;
     if (t.done) { R.me[which] = t.done; return next(); }
     if (!t.qs.length) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = { s: 0, t: 0 }; return next(); }
@@ -152,8 +167,9 @@
         '</div><p class="gerr" id="lv-err" role="alert" hidden></p><div class="tqnav">' +
         (i ? '<button type="button" class="btn soft" id="lv-back">← Back</button>' : '<span></span>') +
         '<button type="button" class="btn" id="lv-next"' + (ans[q.id] ? '' : ' disabled') + '>' + (last ? 'Finish' : 'Next') + '</button></div>' +
-        (which === 'pre' && i === 0 ? '<button type="button" class="lv-link" id="lv-skip">Skip the pre-test</button>' : '') + '</div>' +
-        (which === 'pre' ? '<p class="lv-note">This checks what you know now. You\'ll answer the same questions later to see how much you\'ve grown. Scores are only seen by you and L&amp;D.</p>' : '') + '</div>';
+        (which === 'pre' && i === 0 && !R.on ? '<button type="button" class="lv-link" id="lv-skip">Skip the pre-test</button>' : '') + '</div>' +
+        (which === 'pre' ? '<p class="lv-note">This checks what you know now. You\'ll answer the same questions later to see how much you\'ve grown.' +
+          (R.on ? ' You\'ll see your score after the post-test.' : '') + ' Scores are only seen by you and L&amp;D.</p>' : '') + '</div>';
       L.querySelectorAll('.opt').forEach((b) => { b.onclick = () => { ans[q.id] = b.dataset.k; draw(); }; });
       if ($('lv-back')) $('lv-back').onclick = () => { i--; draw(); };
       if ($('lv-skip')) $('lv-skip').onclick = () => { store.set('live-skip-' + P.code, '1'); pcall('liveSkip').catch(() => {}); next(); };
@@ -162,6 +178,7 @@
         const B = $('lv-next'); B.disabled = true; B.textContent = 'Checking…';
         try {
           const r = await pcall('liveSubmit', [which, ans]);
+          if (r.done) { R.me[which] = { d: 1 }; return next(); }          // online pre-test: score shown after the post-test
           R.me[which] = { s: r.s, t: r.t }; if (r.pre) R.me.pre = r.pre;
           if (which === 'post' && R.ph !== 'live') return done();
           result(which, r);
@@ -353,7 +370,7 @@
     if (my !== gen || !P) return;
     const beat = Date.now() - BEAT > 20000;
     // slide pictures come with the answer: the slide on screen, the live one, and the next one (ready before it is shown)
-    const want = R ? [VIEW, R.s, R.s + 1].filter((n, i, a) => n >= 1 && n <= R.n && n <= R.max + 1 && a.indexOf(n) === i && !IMG[R.t + ':' + n]) : [];
+    const want = R && !R.on ? [VIEW, R.s, R.s + 1].filter((n, i, a) => n >= 1 && n <= R.n && n <= R.max + 1 && a.indexOf(n) === i && !IMG[R.t + ':' + n]) : [];
     try {
       const r = await pcall('livePoll', [VER, beat ? 1 : 0, want]);
       if (my !== gen) return;
@@ -374,7 +391,8 @@
       if (String(e.message) === 'NOT_AVAILABLE') return done(true);
       if ($('lv-net')) { $('lv-net').textContent = why(e); $('lv-net').hidden = false; }
     }
-    pollT = setTimeout(() => poll(my), document.hidden ? 10000 : 2000);
+    // online: every 12–18 s, a different moment on each phone, so 100+ phones don't arrive together
+    pollT = setTimeout(() => poll(my), R && R.on ? 12000 + Math.random() * 6000 : document.hidden ? 10000 : 2000);
   }
 
   function done(gone) {
@@ -407,9 +425,31 @@
   const hcall = (fn, args) => call(fn, [store.get('tok'), H ? H.c : ''].concat(args || []));
   const TYN = { poll: 'Poll', text: 'Text', drag: 'Draggable', draw: 'Draw' };
 
-  async function start(trainingId) {
-    const r = await call('liveStart', [store.get('tok'), trainingId]);
-    location.hash = '#/live/' + r.code;
+  /** Go live: in the room (slides and activities on phones) or online (tests only, for big Zoom/Meet sessions). Resolves false if cancelled. */
+  function start(trainingId) {
+    return new Promise((resolve) => {
+      stop(); open(); SCREEN = 'choose';
+      const opt = (m, t, d) => '<button type="button" class="lv-mode" data-m="' + m + '"><b>' + t + '</b><span>' + d + '</span></button>';
+      L.innerHTML = '<div class="lv-phone"><div class="lv-card"><h1 class="lv-h1">How will you run this session?</h1>' +
+        opt('room', 'In the room', 'Slides on phones, with polls, text, drag and draw, raised hands and questions. Up to 80 teachers.') +
+        opt('online', 'Online (tests only)', 'For Zoom or Meet. Teachers only do the pre-test and post-test on their phones. For 100+ teachers.') +
+        '<p class="gerr" id="lv-err" role="alert" hidden></p><button type="button" class="btn soft lv-big" id="lv-cx">Cancel</button></div></div>';
+      $('lv-cx').onclick = () => { close(); resolve(false); };
+      L.querySelectorAll('.lv-mode').forEach((b) => {
+        b.onclick = async () => {
+          L.querySelectorAll('.lv-mode').forEach((x) => { x.disabled = true; });
+          b.querySelector('b').textContent = 'Starting…';
+          try {
+            const r = await call('liveStart', [store.get('tok'), trainingId, b.dataset.m]);
+            resolve(true); location.hash = '#/live/' + r.code;
+          } catch (e) {
+            $('lv-err').textContent = why(e); $('lv-err').hidden = false;
+            L.querySelectorAll('.lv-mode').forEach((x) => { x.disabled = false; });
+            b.querySelector('b').textContent = b.dataset.m === 'room' ? 'In the room' : 'Online (tests only)';
+          }
+        };
+      });
+    });
   }
 
   async function present(code) {
@@ -420,6 +460,7 @@
     catch (e) { L.innerHTML = '<div class="lv-pres"><div class="lv-card lv-center"><p>' + esc(why(e)) + '</p><button type="button" class="btn" id="lv-x">Back</button></div></div>'; $('lv-x').onclick = () => close('#/'); return; }
     if (my !== gen) return;
     H = r; HVER = r.v; offset = r.now - Date.now(); panelNotes = false; joinBig = r.ph === 'live' && r.people.length < 3; endArmed = 0; BIGD = '';
+    if (H.on) return presentOnline(my);
     call('material', [store.get('tok'), H.t]).then((m) => { NOTES = m.notes || []; if (SCREEN === 'present') drawP(); }, () => { NOTES = []; });
     // get every slide picture ready on the server while people join, so phones get them fast
     (async () => { let from = 1; while (from && my === gen) { try { from = (await hcall('liveWarm', [from])).next; } catch (e) { break; } } })();
@@ -588,9 +629,53 @@
         const changed = H.here !== r.here || actKey(H.act) !== actKey(r.act);
         H.here = r.here; H.act = r.act;
         if (changed) drawP();
-      } else { H = r; HVER = r.v; if (H.ph === 'ended') return summary(); drawP(); }
+      } else { H = r; HVER = r.v; if (H.ph === 'ended') return summary(); draw(); }
     } catch (e) { if (my !== gen) return; if (String(e.message) === 'NOT_AVAILABLE') return summary(); }
-    pollT = setTimeout(() => hpoll(my), 2000);
+    pollT = setTimeout(() => hpoll(my), H && H.on ? 4000 : 2000);
+    function draw() { if (H.on) drawO(); else drawP(); }
+  }
+
+  // ---------------------------------------------------------------- online session (tests only): join card and progress
+  let postArmed = 0;
+  function presentOnline(my) {
+    SCREEN = 'present'; postArmed = 0;
+    const url = location.origin + location.pathname.replace(/index\.html$/, '') + '#/join/' + H.c;
+    let qr = '';
+    try { const q = window.qrcode(0, 'M'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 8, margin: 2, scalable: true, alt: 'QR code to join' }); } catch (e) {}
+    L.innerHTML = '<div class="lv-pres">' +
+      '<div class="lv-ptop"><img src="img/logo.webp" alt="STAR Library" class="lv-plogo"><span class="lv-ptt"><small>' + esc(H.t) + '</small><b>' + esc(H.tt) + '</b></span>' +
+      '<span class="lv-pill lime" id="lv-ph"></span><button type="button" class="lv-icon" id="lv-out" aria-label="Leave present screen">✕</button></div>' +
+      '<div class="lv-obody"><div class="lv-ojoin"><span class="lv-qr">' + qr + '</span><div><p>Join on your phone</p><b>' + H.c.slice(0, 3) + ' ' + H.c.slice(3) + '</b>' +
+      '<small>' + esc(url.replace(/^https?:\/\//, '').replace(/#.*$/, '')) + ' › Join training</small><small>Or share this link in the chat:</small>' +
+      '<button type="button" class="btn soft" id="lv-copyl">Copy join link</button></div></div>' +
+      '<aside class="lv-oside"><div class="lv-scores" id="lv-ost"></div><div class="lv-obtns" id="lv-ob"></div><div class="lv-card lv-grow" id="lv-ppl"></div></aside></div></div>';
+    $('lv-out').onclick = () => close('#/');
+    $('lv-copyl').onclick = () => (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Join link copied. Paste it in the Zoom or Meet chat.'), () => toast(url));
+    drawO();
+    hpoll(my);
+  }
+  function drawO() {
+    if (SCREEN !== 'present' || !H) return;
+    const ppl = H.people || [], post = H.ph === 'post';
+    const pre = ppl.filter((p) => p.pre).length, pst = ppl.filter((p) => p.post).length;
+    $('lv-ph').textContent = post ? 'ONLINE · POST-TEST' : 'ONLINE · PRE-TEST';
+    $('lv-ost').innerHTML = '<div class="lv-scbox"><small>Joined</small><b>' + ppl.length + '</b></div>' +
+      '<div class="lv-scbox"><small>Pre-test done</small><b>' + pre + '</b></div><div class="lv-scbox up"><small>Post-test done</small><b>' + (post ? pst : '–') + '</b></div>';
+    const pa = Date.now() - postArmed < 4000, ea = Date.now() - endArmed < 4000;
+    $('lv-ob').innerHTML = (post ? '<span class="lv-pill dark">Post-test is open</span>' : '<button type="button" class="btn" id="lv-opost">' + (pa ? 'Tap again to open' : 'Open post-test') + '</button>') +
+      '<button type="button" class="btn' + (post ? '' : ' soft') + '" id="lv-oend">' + (ea ? 'Tap again to close' : 'End session') + '</button>';
+    if ($('lv-opost')) $('lv-opost').onclick = () => {
+      if (Date.now() - postArmed >= 4000) { postArmed = Date.now(); drawO(); setTimeout(drawO, 4100); return; }
+      postArmed = 0; H.ph = 'post'; drawO(); ctl('post');
+    };
+    $('lv-oend').onclick = () => {
+      if (Date.now() - endArmed >= 4000) { endArmed = Date.now(); drawO(); setTimeout(drawO, 4100); return; }
+      endArmed = 0; H.ph = 'ended'; $('lv-oend').disabled = true; ctl('end').then(summary);
+    };
+    const fin = (p) => (post ? p.post : p.pre);
+    $('lv-ppl').innerHTML = '<b>' + (post ? 'Post-test · ' + pst : 'Pre-test · ' + pre) + ' of ' + ppl.length + ' done</b>' +
+      '<div class="lv-olist">' + ppl.slice().sort((a, b) => (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0)).map((p) => '<span class="lv-oname' + (fin(p) ? ' fin' : '') + '">' + (fin(p) ? '✓ ' : '') + esc(p.n) + (p.c ? ' <small>' + esc(p.c) + '</small>' : '') + '</span>').join('') +
+      (ppl.length ? '' : '<p class="lv-muted">Names show here as teachers join.</p>') + '</div>';
   }
   function summary() {
     stop(); SCREEN = 'summary';
