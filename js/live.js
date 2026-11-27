@@ -528,7 +528,8 @@
     try { const q = window.qrcode(0, 'M'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true, alt: 'QR code to join' }); } catch (e) {}
     L.innerHTML = '<div class="lv-pres">' +
       '<div class="lv-ptop"><img src="img/logo.webp" alt="STAR Library" class="lv-plogo"><span class="lv-ptt"><small>' + esc(H.t) + '</small><b>' + esc(H.tt) + '</b></span>' +
-      '<span class="lv-pill lime" id="lv-ph"></span><button type="button" class="lv-icon" id="lv-fs" aria-label="Full screen">⛶</button><button type="button" class="lv-icon" id="lv-out" aria-label="Leave present screen">✕</button></div>' +
+      '<span class="lv-pill lime" id="lv-ph"></span><button type="button" class="lv-sidebtn" id="lv-side" aria-label="Show the panel (P)" aria-pressed="false"></button>' +
+      '<button type="button" class="lv-icon" id="lv-fs" aria-label="Full screen">⛶</button><button type="button" class="lv-icon" id="lv-out" aria-label="Leave present screen">✕</button></div>' +
       '<div class="lv-pbody"><div class="lv-pmain"><div class="lv-pslide" id="lv-ps"><span class="lv-wait">Loading slide…</span><div class="lv-res" id="lv-res" hidden></div>' +
       '<div class="lv-ptimer" id="lv-pt" hidden><small id="lv-ptl"></small><b id="lv-ptv"></b></div></div>' +
       '<div class="lv-actbar" id="lv-ab" hidden></div>' +
@@ -546,11 +547,16 @@
     $('lv-pjc').onclick = () => { joinBig = true; drawP(); };
     $('lv-bjx').onclick = () => { joinBig = false; drawP(); };
     $('lv-fs').onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else if (L.requestFullscreen) L.requestFullscreen().catch(() => {}); };
+    // full screen (screen sharing): the side panel hides; the panel button brings it back over the slide
+    const fsSync = () => { const P0 = L.querySelector('.lv-pres'); if (!P0) return document.removeEventListener('fullscreenchange', fsSync); P0.classList.toggle('fs', !!document.fullscreenElement); sideOpen = false; sideSync(); };
+    document.addEventListener('fullscreenchange', fsSync);
+    $('lv-side').onclick = () => { sideOpen = !sideOpen; sideSync(); };
     $('lv-out').onclick = () => close('#/');
     $('lv-pend').onclick = endClick;
     keyFn = (e) => {
       if (SCREEN !== 'present' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return;
       if (e.key === 'Escape' && BIGD) { BIGD = ''; return results(); }
+      if ((e.key === 'p' || e.key === 'P') && document.fullscreenElement) { sideOpen = !sideOpen; return sideSync(); }
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); slideTo(H.s + 1); }
       else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); slideTo(H.s - 1); }
     };
@@ -559,6 +565,22 @@
     drawP();
     tickT = setInterval(ptimer, 500);
     hpoll(my);
+  }
+  let sideOpen = false;
+  function sideSync() {
+    const P0 = L.querySelector('.lv-pres'), B = $('lv-side'); if (!P0 || !B) return;
+    P0.classList.toggle('side', sideOpen);
+    sideBadge();
+    results();
+  }
+  function sideBadge() {
+    const B = $('lv-side'); if (!B) return;
+    B.setAttribute('aria-pressed', String(sideOpen)); B.setAttribute('aria-label', (sideOpen ? 'Hide' : 'Show') + ' the panel (P)');
+    const hands = (H && H.people || []).filter((p) => p.h).length, qn = (H && H.q || []).length;
+    const h = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg>' +
+      '<span>✋ ' + hands + '</span><span>? ' + qn + '</span>';
+    if (B.innerHTML !== h) B.innerHTML = h;
+    B.classList.toggle('alert', !sideOpen && (hands > 0 || qn > 0));
   }
   function pResize() { if (SCREEN !== 'present') return removeEventListener('resize', pResize); results(); }
 
@@ -602,6 +624,7 @@
     const qs = H.q || [];
     $('lv-qs').innerHTML = '<b>Questions · ' + qs.length + '</b>' + (qs.length ? qs.slice(-3).reverse().map((q) => '<div class="lv-qitem"><p>"' + esc(q.tx) + '"</p><small>' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s) + '</small><button type="button" class="lv-chip" data-cq="' + q.i + '">Done</button></div>').join('') : '<p class="lv-muted">Questions from phones show here.</p>');
     L.querySelectorAll('[data-cq]').forEach((b) => { b.onclick = () => { H.q = H.q.filter((x) => x.i !== b.dataset.cq); drawP(); ctl('clearq', b.dataset.cq); }; });
+    sideBadge();
     // people, or test progress while a test is open
     const postOn = H.pre && (H.ph === 'post' || (H.postAt && H.s >= H.postAt)), preOn = H.pre && !postOn && H.s === (H.preAt || 1) && H.ph === 'live';
     const fin = (p) => (postOn ? p.post : preOn ? p.pre || p.sk : 0);

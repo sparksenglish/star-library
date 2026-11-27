@@ -196,3 +196,11 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-names{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;padding-right:2px}
 .lv-cant{margin:0;font-size:14px;color:var(--muted)}
 .lv-essay textarea{min-height:120px}
+/* present screen in full screen: side panel hidden, the panel button brings it back over the slide */
+.lv-pres{position:relative}
+.lv-sidebtn{display:none;height:44px;border-radius:99px;border:0;background:#ffffff22;color:#fff;font:700 14px var(--font);padding:0 14px;gap:8px;align-items:center;cursor:pointer}
+.lv-sidebtn.alert{background:var(--lime);color:#141414}
+.lv-sidebtn[aria-pressed="true"]{background:#fff;color:#141414}
+.lv-pres.fs .lv-sidebtn{display:inline-flex}
+.lv-pres.fs .lv-pside{display:none}
+.lv-pres.fs.side .lv-pside{display:flex;position:absolute;right:20px;top:76px;bottom:84px;width:310px;z-index:6;overflow:auto;border-radius:18px;box-shadow:0 8px 30px #0006}
