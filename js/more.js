@@ -598,7 +598,7 @@ window.STAR_MORE = function (X) {
     X.view('<section class="sec"><h1 class="big" style="font-size:28px">Editor</h1>' + edTabs() +
       '<p class="sm muted" style="margin:0">Live sessions, newest first. Facilitators start one from a training with Go live.</p><div class="edlist">' +
       (ss.length ? ss.map((s) => '<a class="edrow" href="#/edit/sessions/' + encodeURIComponent(s.code + '-' + s.st) + '"><span class="code">' + esc(s.code) + '</span><span><b>' + esc(s.t + ' · ' + s.tt) + '</b><br><span class="sm muted">' +
-        esc(when(s.st) + ' · ' + (s.ce || 'no centre') + ' · ' + s.host + (s.en ? '' : ' · still open')) + '</span></span><span class="sm" style="text-align:right">' + s.people + ' people<br>' + pct(s.pre) + ' → ' + pct(s.post) + '</span></a>').join('')
+        esc(when(s.st) + ' · ' + (s.ce || 'no centre') + ' · ' + s.host + (s.en ? '' : ' · still open')) + '</span></span><span class="sm" style="text-align:right">' + s.people + ' people' + (s.rt ? ' · <b>★ ' + s.rt + '</b>' : '') + '<br>' + pct(s.pre) + ' → ' + pct(s.post) + '</span></a>').join('')
         : '<p class="muted">No live sessions yet.</p>') + '</div></section>', 'edit');
   }
   function actSummary(ans) {
@@ -624,6 +624,9 @@ window.STAR_MORE = function (X) {
       '<h2 class="lbl">Attendance</h2><div class="edlist">' + (d.people.length ? d.people.map((p) => '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b>' +
         (p.em ? ' <a class="sm" href="#/person/' + encodeURIComponent(p.em) + '">profile</a>' : '') + '<br><span class="sm muted">' + (p.pa ? esc(p.pa) + ' · ' : '') + 'joined ' + esc(when(p.j)) +
         (p.h ? ' · hand up ' + p.h + '×' : '') + (p.q ? ' · ' + p.q + ' question' + (p.q > 1 ? 's' : '') : '') + '</span></span><span class="sm" style="text-align:right">Pre ' + sc(p.pre) + '<br>Post ' + sc(p.post) + '</span></div>').join('') : '<p class="muted">Nobody joined.</p>') + '</div>' +
+      (d.rating ? '<h2 class="lbl">Rating · ' + d.rating.n + ' teacher' + (d.rating.n === 1 ? '' : 's') + '</h2><div class="qcard ratebox"><div class="rbig"><b>★ ' + d.rating.avg + '</b><small>out of 5</small></div><div class="rbars">' +
+        [5, 4, 3, 2, 1].map((k) => '<div class="rrow"><span>' + k + ' ★</span><i><b style="width:' + Math.round(100 * d.rating.d[k - 1] / d.rating.n) + '%"></b></i><span>' + d.rating.d[k - 1] + '</span></div>').join('') + '</div></div>' +
+        (d.rating.cm.length ? d.rating.cm.map((c) => '<div class="qcard"><div class="sm muted">' + esc(c.n + (c.c ? ' · ' + c.c : '')) + ' · ' + '★'.repeat(c.s) + '</div><p style="margin:4px 0">' + esc(c.tx) + '</p></div>').join('') : '') : '') +
       (d.essays && d.essays.length ? '<h2 class="lbl">Essay answers</h2>' + d.essays.map((e) => '<div class="qcard"><div class="sm muted">' + esc(e.id) + ' · ' + e.r.length + ' teacher' + (e.r.length === 1 ? '' : 's') + '</div><p style="margin:4px 0 8px"><b>' + esc(e.q) + '</b></p>' +
         e.r.map((r) => '<div class="esrow"><b class="sm">' + esc(r.n + (r.c ? ' (' + r.c + ')' : '')) + '</b><div class="escols"><div><small>Pre-test</small><p>' + esc(r.pre || '–') + '</p></div><div><small>Post-test</small><p>' + esc(r.post || '–') + '</p></div></div></div>').join('') + '</div>').join('') : '') +
       (d.ans && d.ans.length ? '<h2 class="lbl">Slide activities</h2>' + actSummary(d.ans) : '') +

@@ -370,3 +370,9 @@ h1.big em{font-style:normal;color:var(--brand)}
 .tpprev{background:var(--card);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
 .tpq{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:8px}
 .tpq.bad{border-left:4px solid var(--err);padding-left:8px}
+/* session report: rating */
+.ratebox{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.rbig{display:flex;flex-direction:column}.rbig b{font-size:34px;font-weight:800;color:#C98F00}.rbig small{font-size:12px;color:var(--muted)}
+.rbars{flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px}
+.rrow{display:grid;grid-template-columns:36px 1fr 28px;gap:8px;align-items:center;font-size:12px}
+.rrow i{height:8px;border-radius:99px;background:var(--soft2);overflow:hidden}.rrow i b{display:block;height:100%;background:#F5B301;border-radius:99px}

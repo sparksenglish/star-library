@@ -172,8 +172,11 @@
     if (R.preDue && !R.me.pre && !store.get('live-skip-' + P.code)) return 'pre';
     return '';
   }
+  let TQ = null;                                   // test questions (no answers), loaded right after joining
+  function prefetchQs() { if (!P || !R || !R.pre || TQ) return; pcall('liveQs').then((q) => { TQ = q; }).catch(() => {}); }
   function afterJoin(r) {
     R = r; VER = r.v; offset = r.now - Date.now();
+    prefetchQs();
     if (r.ph === 'ended') return done();
     const d = due();
     if (d) return test(d);
@@ -207,7 +210,8 @@
     stop(); const my = gen; SCREEN = which;
     L.innerHTML = '<div class="lv-phone"><p class="lv-wait">Opening the ' + which + '-test…</p></div>';
     let t;
-    try { t = await pcall('liveTest', [which]); } catch (e) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = R.me.post || { s: 0, t: 0 }; return R.ph === 'live' ? follow() : done(String(e.message) === 'NOT_AVAILABLE'); }
+    if (TQ && TQ.length && !R.me[which]) t = { qs: TQ };     // already on the phone: opens at once
+    else try { t = await pcall('liveTest', [which]); } catch (e) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = R.me.post || { s: 0, t: 0 }; return R.ph === 'live' ? follow() : done(String(e.message) === 'NOT_AVAILABLE'); }
     if (my !== gen) return;
     if (t.done) { R.me[which] = t.done; return next(); }
     if (!t.qs.length) { if (which === 'pre') store.set('live-skip-' + P.code, '1'); else R.me.post = { s: 0, t: 0 }; return next(); }
@@ -249,6 +253,24 @@
       };
     };
     draw();
+    watch(gen);
+  }
+  /** On test and result screens: keep checking in, so "session ended" still shows within seconds. */
+  function watch(my) {
+    const gap = () => (R && R.on ? 12000 + Math.random() * 6000 : 2000);
+    pollT = setTimeout(async function w() {
+      if (my !== gen || !P) return;
+      try {
+        const r = await pcall('livePoll', [VER, 0, []]);
+        if (my !== gen) return;
+        if (!r.same) {
+          R = Object.assign(r, { me: Object.assign({}, R.me, r.me, { pre: r.me.pre || R.me.pre, post: r.me.post || R.me.post }) }); VER = r.v;
+          if (r.ph === 'ended') return done();
+          if (due() === 'post' && SCREEN !== 'post') return test('post');   // post-test opened while this phone was on a result screen
+        }
+      } catch (e) { if (my !== gen) return; if (String(e.message) === 'NOT_AVAILABLE') return done(true); }
+      pollT = setTimeout(w, gap());
+    }, gap());
   }
   function result(which, r) {
     L.innerHTML = '<div class="lv-phone">' + meBar(which === 'pre' ? 'Pre-test done' : 'Post-test done') + '<div class="lv-card lv-center">' +
@@ -455,6 +477,36 @@
   }
 
   function done(gone) {
+    if (!gone && P && !store.get('live-rated-' + P.code)) return rate();
+    doneView(gone);
+  }
+  const STARS = ['', 'Not at all', 'Not really', 'It\'s okay', 'I like it', 'I love it!'];
+  /** One last question: "Do you like this training?" 1–5 stars (required) and an optional comment. */
+  function rate() {
+    stop(); SCREEN = 'rate';
+    let st = 0;
+    L.innerHTML = '<div class="lv-phone">' + meBar('One last question') + '<div class="lv-card lv-center lv-rate"><b class="lv-h2">Do you like this training?</b>' +
+      '<div class="lv-stars" role="radiogroup" aria-label="Your rating">' + [1, 2, 3, 4, 5].map((n) => '<button type="button" class="lv-star" role="radio" aria-checked="false" aria-label="' + n + ' star' + (n > 1 ? 's' : '') + ', ' + STARS[n] + '" data-n="' + n + '">★</button>').join('') + '</div>' +
+      '<p class="lv-muted" id="lv-stl">Tap the stars</p>' +
+      '<label class="lv-fld lv-left">Anything to tell us? <span class="lv-opt">(optional)</span><textarea id="lv-cm" rows="3" maxlength="500"></textarea></label>' +
+      '<p class="gerr" id="lv-err" role="alert" hidden></p><button type="button" class="btn lv-big" id="lv-rs" disabled>Send</button></div></div>';
+    L.querySelectorAll('.lv-star').forEach((b) => {
+      b.onclick = () => {
+        st = +b.dataset.n;
+        L.querySelectorAll('.lv-star').forEach((x) => { const on = +x.dataset.n <= st; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(+x.dataset.n === st)); });
+        $('lv-stl').textContent = STARS[st]; $('lv-rs').disabled = false;
+      };
+    });
+    $('lv-rs').onclick = async () => {
+      const B = $('lv-rs'); B.disabled = true; B.textContent = 'Sending…';
+      try { await pcall('liveRate', [st, $('lv-cm').value]); store.set('live-rated-' + P.code, '1'); doneView(); }
+      catch (e) {
+        if (String(e.message) === 'NOT_AVAILABLE') { store.set('live-rated-' + P.code, '1'); return doneView(true); }
+        $('lv-err').textContent = why(e); $('lv-err').hidden = false; B.disabled = false; B.textContent = 'Send';
+      }
+    };
+  }
+  function doneView(gone) {
     stop(); SCREEN = 'done';
     const me = (R && R.me) || {}, notes = store.json(notesKey()) || {};
     const ns = Object.keys(notes).map(Number).sort((a, b) => a - b);

@@ -47,7 +47,7 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-avbtn img{width:100%;height:100%;object-fit:contain;display:block}
 .lv-avbtn[aria-pressed="true"]{border-color:var(--brand);background:var(--next)}
 .lv-me{display:flex;align-items:center;gap:10px}
-.lv-me span{display:flex;flex-direction:column}.lv-me small{font-size:12px;color:var(--muted)}
+.lv-me span:not(.lv-av){display:flex;flex-direction:column}.lv-me small{font-size:12px;color:var(--muted)}
 .lv-prog{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}.lv-prog i{display:block;height:100%;background:var(--brand);border-radius:99px}
 .lv-q{margin:0;font-size:20px;font-weight:700;line-height:1.4}
 .lv-opts{display:flex;flex-direction:column;gap:8px}
@@ -204,3 +204,13 @@ body.live-on .bar,body.live-on #view,body.live-on #nav,body.live-on #gate,body.l
 .lv-pres.fs .lv-sidebtn{display:inline-flex}
 .lv-pres.fs .lv-pside{display:none}
 .lv-pres.fs.side .lv-pside{display:flex;position:absolute;right:20px;top:76px;bottom:84px;width:310px;z-index:6;overflow:auto;border-radius:18px;box-shadow:0 8px 30px #0006}
+/* rating at the end */
+.lv-rate{gap:12px}
+.lv-stars{display:flex;gap:6px;justify-content:center}
+.lv-star{width:52px;height:52px;border:0;background:none;font-size:44px;line-height:1;color:#D9DDD4;cursor:pointer;padding:0;transition:transform .12s}
+.lv-star.on{color:#F5B301}
+.lv-star:active{transform:scale(1.15)}
+.lv-star:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:12px}
+.lv-left{align-self:stretch;text-align:left}
+.lv-rate .lv-big{align-self:stretch}
+#live span.lv-av.lv-ini{display:inline-grid;place-items:center;gap:0}   /* initials stay centred inside any card */
