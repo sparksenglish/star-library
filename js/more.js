@@ -507,22 +507,27 @@ window.STAR_MORE = function (X) {
     const id = t.ID, P = LP[id], Q = $('el-qs'); if (!Q) return;
     const live = P.qs.filter((q) => q.Active), ed = live.find((q) => q.ID === EL.q) || {};
     Q.innerHTML = '<div class="edlist">' + (live.length ? live.map((q, i) => '<div class="qcard"><div class="sm muted">' + esc(q.ID) + ' · question ' + (i + 1) + '</div><p style="margin:4px 0"><b>' + esc(q.Question) + '</b></p>' +
-        '<p class="sm" style="margin:0 0 8px">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join('<br>') + '</p>' +
+        (q.Type === 'essay' ? '<p class="sm muted" style="margin:0 0 8px">Essay · teachers write their own answer (not scored)</p>'
+          : '<p class="sm" style="margin:0 0 8px">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join('<br>') + '</p>') +
         '<div class="edbtns"><button type="button" class="btn soft" data-eq="' + esc(q.ID) + '">Edit</button><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
         : '<p class="muted">No questions yet. Without questions, live sessions of this training skip the tests.</p>') + '</div>' +
       '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : 'Add a test question') + '</h2><div class="edform">' +
-      fld('Question', area('l-Question', ed.Question || '', 2)) + fld('A', inp('l-A', ed.A || '')) + fld('B', inp('l-B', ed.B || '')) + fld('C', inp('l-C', ed.C || ''), 'Optional') + fld('D', inp('l-D', ed.D || ''), 'Optional') +
-      fld('Correct answer', sel('l-Answer', ed.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) +
+      fld('Type', sel('l-Type', ed.Type || '', [['', 'Multiple choice (scored)'], ['essay', 'Essay (teachers write; not scored)']])) +
+      fld('Question', area('l-Question', ed.Question || '', 2)) +
+      '<div id="l-mc" class="edform" style="grid-column:1/-1;padding:0">' + fld('A', inp('l-A', ed.A || '')) + fld('B', inp('l-B', ed.B || '')) + fld('C', inp('l-C', ed.C || ''), 'Optional') + fld('D', inp('l-D', ed.D || ''), 'Optional') +
+      fld('Correct answer', sel('l-Answer', ed.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) + '</div>' +
       '</div><p class="gerr" id="ed-err" role="alert" hidden></p>' +
       '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID ? '<button type="button" class="btn soft" id="l-cx">Cancel</button>' : '') + '</div>';
     const after = (r) => { livePageSet(id, r.page); EL.q = ''; X.toast(r.msg); qsDraw(t); };
     $('l-save').onclick = async () => {
       const B = $('l-save'); B.disabled = true;
-      const f = { Training: id, ID: ed.ID || '' }; ['Question', 'A', 'B', 'C', 'D', 'Answer'].forEach((k) => { f[k] = $('l-' + k).value; });
+      const f = { Training: id, ID: ed.ID || '' }; ['Type', 'Question', 'A', 'B', 'C', 'D', 'Answer'].forEach((k) => { f[k] = $('l-' + k).value; });
       try { after(await X.api('edSaveLiveTest', [f])); }
       catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; B.disabled = false; }
     };
     if ($('l-cx')) $('l-cx').onclick = () => { EL.q = ''; qsDraw(t); };
+    const tySync = () => { $('l-mc').hidden = $('l-Type').value === 'essay'; };
+    $('l-Type').onchange = tySync; tySync();
     Q.querySelectorAll('[data-eq]').forEach((b) => { b.onclick = () => { EL.q = b.dataset.eq; qsDraw(t); $('lt-h').scrollIntoView({ block: 'start' }); $('l-Question').focus(); }; });
     Q.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { after(await X.api('edHideLiveTest', [b.dataset.rm, id])); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
   }
@@ -556,10 +561,26 @@ window.STAR_MORE = function (X) {
     X.view('<section class="sec"><a class="btn soft back" href="#/edit/sessions">← Sessions</a><h1 class="big" style="font-size:28px">' + esc(s.t + ' · ' + s.tt) + '</h1>' +
       '<p class="sm muted" style="margin:0">' + esc('Code ' + s.code + ' · ' + when(s.st) + (s.en ? ' to ' + when(s.en) : ' · still open') + ' · ' + (s.ce || 'no centre') + ' · host ' + s.host) + '</p>' +
       '<div class="lv-scores"><div class="lv-scbox"><small>Teachers</small><b>' + d.people.length + '</b></div><div class="lv-scbox"><small>Pre-test average</small><b>' + pct(s.pre) + '</b></div><div class="lv-scbox up"><small>Post-test average</small><b>' + pct(s.post) + '</b></div></div>' +
-      '<h2 class="lbl">Attendance</h2><div class="edlist">' + (d.people.length ? d.people.map((p) => '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b><br><span class="sm muted">joined ' + esc(when(p.j)) +
+      '<h2 class="lbl">Attendance</h2><div class="edlist">' + (d.people.length ? d.people.map((p) => '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b>' +
+        (p.em ? ' <a class="sm" href="#/person/' + encodeURIComponent(p.em) + '">profile</a>' : '') + '<br><span class="sm muted">' + (p.pa ? esc(p.pa) + ' · ' : '') + 'joined ' + esc(when(p.j)) +
         (p.h ? ' · hand up ' + p.h + '×' : '') + (p.q ? ' · ' + p.q + ' question' + (p.q > 1 ? 's' : '') : '') + '</span></span><span class="sm" style="text-align:right">Pre ' + sc(p.pre) + '<br>Post ' + sc(p.post) + '</span></div>').join('') : '<p class="muted">Nobody joined.</p>') + '</div>' +
+      (d.essays && d.essays.length ? '<h2 class="lbl">Essay answers</h2>' + d.essays.map((e) => '<div class="qcard"><div class="sm muted">' + esc(e.id) + ' · ' + e.r.length + ' teacher' + (e.r.length === 1 ? '' : 's') + '</div><p style="margin:4px 0 8px"><b>' + esc(e.q) + '</b></p>' +
+        e.r.map((r) => '<div class="esrow"><b class="sm">' + esc(r.n + (r.c ? ' (' + r.c + ')' : '')) + '</b><div class="escols"><div><small>Pre-test</small><p>' + esc(r.pre || '–') + '</p></div><div><small>Post-test</small><p>' + esc(r.post || '–') + '</p></div></div></div>').join('') + '</div>').join('') : '') +
       (d.ans && d.ans.length ? '<h2 class="lbl">Slide activities</h2>' + actSummary(d.ans) : '') +
-      '<h2 class="lbl">Questions from the room</h2><div class="edlist">' + (d.q.length ? d.q.map((q) => '<div class="qcard"><div class="sm muted">' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s + ' · ' + when(q.ts)) + '</div><p style="margin:4px 0">' + esc(q.tx) + '</p></div>').join('') : '<p class="muted">No questions.</p>') + '</div></section>', 'edit');
+      '<h2 class="lbl">Questions from the room</h2><div class="edlist">' + (d.q.length ? d.q.map((q) => '<div class="qcard"><div class="sm muted">' + esc(q.n + (q.c ? ' · ' + q.c : '') + ' · slide ' + q.s + ' · ' + when(q.ts)) + '</div><p style="margin:4px 0">' + esc(q.tx) + '</p></div>').join('') : '<p class="muted">No questions.</p>') + '</div>' +
+      '<div class="eddanger"><b>Delete this session</b><p class="sm muted" style="margin:0">Removes its attendance, test scores, essays, activity answers and questions. This can\'t be undone. Drawings stay in the Drive folder.</p>' +
+      '<button type="button" class="btn soft" id="ses-del" style="color:var(--err)">Delete session</button></div></section>', 'edit');
+    let armed = 0;
+    $('ses-del').onclick = async () => {
+      const B = $('ses-del');
+      if (Date.now() - armed > 4000) { armed = Date.now(); B.textContent = 'Tap again to delete'; setTimeout(() => { if (B.isConnected && !B.disabled) B.textContent = 'Delete session'; }, 4000); return; }
+      B.disabled = true; B.textContent = 'Deleting…';
+      try {
+        const r = await X.api('edDeleteSession', [s.code, s.st]);
+        S.setJson('pg-eds', r.sessions); S.setJson('pg-es-' + s.code + '-' + s.st, null);
+        X.toast(r.msg); location.hash = '#/edit/sessions';
+      } catch (e) { X.toast(errText(e)); B.disabled = false; B.textContent = 'Delete session'; }
+    };
   }
 
   function edQuestions() { return fresh('pg-edq', 'edQuestions', [], questionsDraw, 'edit', 'Editor', '#/edit/questions'); }

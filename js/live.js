@@ -75,38 +75,94 @@
     joinForm(code);
   }
 
+  /** Join: code → centre → pathway → tap your name (or type it) → avatar. Names come from the Teacher List tab. */
   function joinForm(code, err) {
     SCREEN = 'join';
     const last = store.json('live-me') || {};
-    let pick = last.a || '';
-    L.innerHTML = '<div class="lv-phone"><div class="lv-head"><a href="#/" class="btn soft lv-home" id="lv-home">← ' + (store.get('tok') ? 'Home' : 'Sign in') + '</a><a href="#/" class="lv-logolink" id="lv-logo" aria-label="STAR Library home"><img src="img/logo.webp" alt="STAR Library" class="lv-logo"></a></div>' +
-      '<form class="lv-card" id="lv-join" novalidate><h1 class="lv-h1">Join training</h1>' +
-      '<label class="lv-fld">Session code<input id="lv-code" class="lv-codein" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="123 456" value="' + esc(code) + '"></label>' +
-      '<label class="lv-fld">Your name<input id="lv-name" autocomplete="name" maxlength="40" placeholder="e.g. Siti Rahma" value="' + esc(last.n || '') + '"></label>' +
-      '<label class="lv-fld">Centre <span class="lv-opt">(optional, e.g. BDG)</span><input id="lv-ce" autocomplete="off" maxlength="10" value="' + esc(last.c || '') + '"></label>' +
-      '<fieldset class="lv-fld lv-avs"><legend>Pick your avatar <span class="lv-opt">(optional)</span></legend><div class="lv-avgrid">' +
-      AVATARS.map((a) => '<button type="button" class="lv-avbtn" data-a="' + a + '" aria-pressed="' + (a === pick) + '" aria-label="' + a.replace('-', ' ') + '"><img src="img/av/' + a + '-happy.webp" alt="" width="48" height="48"></button>').join('') +
-      '</div></fieldset><p class="gerr" id="lv-err" role="alert"' + (err ? '' : ' hidden') + '>' + esc(err || '') + '</p>' +
-      '<button class="btn lv-big" id="lv-go">Join</button></form>' +
-      '<p class="lv-small">No sign-in needed. Your name is used for attendance and the tests.</p></div>';
+    const J = { code: code6(code), step: code6(code).length === 6 ? 'load' : 'code', ros: null, ce: '', pa: '', n: '', manual: false, a: last.a || '', q: '', err: err || '' };
     const home = (ev) => { ev.preventDefault(); stop(); if (!store.get('tok')) { L.hidden = true; location.replace('./'); return; } close(); location.hash = '#/'; };
-    $('lv-home').onclick = home; $('lv-logo').onclick = home;
-    L.querySelectorAll('.lv-avbtn').forEach((b) => { b.onclick = () => { pick = pick === b.dataset.a ? '' : b.dataset.a; L.querySelectorAll('.lv-avbtn').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.a === pick))); }; });
-    $(code ? 'lv-name' : 'lv-code').focus();
-    $('lv-join').onsubmit = async (ev) => {
-      ev.preventDefault();
-      const c = code6($('lv-code').value), n = $('lv-name').value.trim(), ce = $('lv-ce').value.trim().toUpperCase(), E = $('lv-err'), B = $('lv-go');
-      E.hidden = true;
-      if (c.length !== 6) { E.textContent = 'Type the 6-digit code from the screen.'; E.hidden = false; return; }
-      if (!n) { E.textContent = 'Type your name.'; E.hidden = false; return; }
-      B.disabled = true; B.textContent = 'Joining…';
+    const ceName = (c) => { const x = J.ros && J.ros.cs.find((y) => y.c === c); return c + (x && x.n ? ' · ' + x.n : ''); };
+    const names = () => ((J.ros && J.ros.p[J.ce]) || {})[J.pa] || [];
+    const paths = () => (J.ros ? J.ros.ps.concat(((J.ros.p[J.ce] || {}).Other) ? ['Other'] : []) : []);
+    async function load() {
+      J.step = 'load'; draw();
       try {
-        const r = await call('liveJoin', [c, n, ce, pick]);
-        P = { code: c, pid: r.pid }; saveP(); store.setJson('live-me', { n, c: ce, a: pick });
-        if (location.hash !== '#/join/' + c) history.replaceState(null, '', '#/join/' + c);
-        afterJoin(r.room);
-      } catch (e) { E.textContent = why(e); E.hidden = false; B.disabled = false; B.textContent = 'Join'; }
-    };
+        J.ros = await call('liveRoster', [J.code]);
+        J.err = '';
+        J.step = J.ros.cs.length ? 'centre' : 'manual';   // no Teacher List yet: type name and centre
+        if (!J.ros.cs.length) { J.n = last.n || ''; J.ce = last.c || ''; J.manual = true; }
+      } catch (e) { J.step = 'code'; J.err = String(e.message) === 'NOT_AVAILABLE' ? 'This session isn\'t open. Check the 6-digit code on the screen.' : why(e); }
+      draw();
+    }
+    function draw() {
+      const back = { centre: 'code', path: 'centre', name: 'path', manual: J.ros && J.ros.cs.length ? (J.pa ? 'name' : 'centre') : 'code', avatar: J.manual ? 'manual' : 'name' }[J.step];
+      const stepNo = { code: 1, centre: 2, path: 3, name: 4, manual: 4, avatar: 5 }[J.step] || 1;
+      let body = '';
+      if (J.step === 'load') body = '<p class="lv-wait">Opening session ' + esc(J.code.slice(0, 3) + ' ' + J.code.slice(3)) + '…</p>';
+      if (J.step === 'code') body = '<label class="lv-fld">Session code<input id="lv-code" class="lv-codein" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="123 456" value="' + esc(J.code) + '"></label>' +
+        '<button class="btn lv-big" id="lv-go">Next</button>';
+      if (J.step === 'centre') {
+        const quick = last.n && last.c && J.ros.p[last.c] && Object.keys(J.ros.p[last.c]).some((k) => J.ros.p[last.c][k].indexOf(last.n) > -1);
+        body = (quick ? '<button type="button" class="lv-choice lv-me" id="lv-asme">' + avatar({ n: last.n, a: last.a }, 40, '') + '<span><b>Continue as ' + esc(last.n) + '</b><small>' + esc(ceName(last.c) + (last.pa ? ' · ' + last.pa : '')) + '</small></span></button>' : '') +
+          '<h2 class="lv-q2">Choose your centre</h2><div class="lv-choices">' + J.ros.cs.map((x) => '<button type="button" class="lv-choice" data-ce="' + esc(x.c) + '"><b>' + esc(x.c) + '</b>' + (x.n ? '<small>' + esc(x.n) + '</small>' : '') + '</button>').join('') + '</div>' +
+          '<button type="button" class="lv-link" id="lv-man">My centre isn\'t here</button>';
+      }
+      if (J.step === 'path') body = '<p class="lv-picked">' + esc(ceName(J.ce)) + '</p><h2 class="lv-q2">Choose your pathway</h2><div class="lv-choices one">' +
+        paths().map((p) => '<button type="button" class="lv-choice" data-pa="' + esc(p) + '"><b>' + esc(p) + '</b></button>').join('') + '</div>';
+      if (J.step === 'name') {
+        const all = names(), q = J.q.toLowerCase(), list = all.filter((n) => !q || n.toLowerCase().indexOf(q) > -1);
+        body = '<p class="lv-picked">' + esc(ceName(J.ce) + ' · ' + J.pa) + '</p><h2 class="lv-q2">Tap your name</h2>' +
+          (all.length > 8 ? '<label class="lv-fld"><span class="sr">Search your name</span><input id="lv-q" type="search" autocomplete="off" placeholder="Search your name" value="' + esc(J.q) + '"></label>' : '') +
+          '<div class="lv-names" id="lv-names">' + (list.length ? list.map((n) => '<button type="button" class="lv-choice" data-n="' + esc(n) + '"><b>' + esc(n) + '</b></button>').join('') : '<p class="lv-muted">' + (all.length ? 'No name matches.' : 'No names here yet.') + '</p>') + '</div>' +
+          '<p class="lv-cant">Can\'t find your name? <button type="button" class="lv-link" id="lv-man">Type your full name manually</button></p>';
+      }
+      if (J.step === 'manual') body = (J.ce && J.ros && J.ros.cs.length ? '<p class="lv-picked">' + esc(ceName(J.ce) + (J.pa ? ' · ' + J.pa : '')) + '</p>' : '') +
+        '<label class="lv-fld">Your full name<input id="lv-name" autocomplete="name" maxlength="40" placeholder="e.g. Siti Rahma" value="' + esc(J.n) + '"></label>' +
+        (J.ce && J.ros && J.ros.cs.length ? '' : '<label class="lv-fld">Centre <span class="lv-opt">(e.g. BDG)</span><input id="lv-ce" autocomplete="off" maxlength="10" value="' + esc(J.ce) + '"></label>') +
+        '<button class="btn lv-big" id="lv-go">Next</button>';
+      if (J.step === 'avatar') body = '<div class="lv-choice lv-me static">' + avatar({ n: J.n, a: J.a }, 40, '') + '<span><b>' + esc(J.n) + '</b><small>' + esc([J.ce ? ceName(J.ce) : '', J.pa].filter(Boolean).join(' · ')) + '</small></span></div>' +
+        '<fieldset class="lv-fld lv-avs"><legend>Pick your avatar <span class="lv-opt">(optional)</span></legend><div class="lv-avgrid">' +
+        AVATARS.map((a) => '<button type="button" class="lv-avbtn" data-a="' + a + '" aria-pressed="' + (a === J.a) + '" aria-label="' + a.replace('-', ' ') + '"><img src="img/av/' + a + '-happy.webp" alt="" width="48" height="48"></button>').join('') +
+        '</div></fieldset><button class="btn lv-big" id="lv-go">Join</button>';
+      L.innerHTML = '<div class="lv-phone"><div class="lv-head"><a href="#/" class="btn soft lv-home" id="lv-home">← ' + (store.get('tok') ? 'Home' : 'Sign in') + '</a><a href="#/" class="lv-logolink" id="lv-logo" aria-label="STAR Library home"><img src="img/logo.webp" alt="STAR Library" class="lv-logo"></a></div>' +
+        '<form class="lv-card" id="lv-join" novalidate><div class="lv-jtop"><h1 class="lv-h1">Join training</h1>' + (J.step !== 'load' ? '<span class="lv-stepno">Step ' + stepNo + ' of 5</span>' : '') + '</div>' +
+        (back && J.step !== 'code' ? '<button type="button" class="lv-link lv-back" id="lv-back">‹ Back</button>' : '') + body +
+        '<p class="gerr" id="lv-err" role="alert"' + (J.err ? '' : ' hidden') + '>' + esc(J.err) + '</p></form>' +
+        '<p class="lv-small">No sign-in needed. Your name is used for attendance and the tests.</p></div>';
+      $('lv-home').onclick = home; $('lv-logo').onclick = home;
+      const go = (step) => { J.step = step; J.err = ''; draw(); };
+      if ($('lv-back')) $('lv-back').onclick = () => { if (J.step === 'manual' && J.ros && J.ros.cs.length) J.manual = false; go(back); };
+      L.querySelectorAll('[data-ce]').forEach((b) => { b.onclick = () => { J.ce = b.dataset.ce; J.pa = ''; J.q = ''; go('path'); }; });
+      L.querySelectorAll('[data-pa]').forEach((b) => { b.onclick = () => { J.pa = b.dataset.pa; J.q = ''; J.manual = false; go('name'); }; });
+      L.querySelectorAll('[data-n]').forEach((b) => { b.onclick = () => { J.n = b.dataset.n; J.manual = false; go('avatar'); }; });
+      if ($('lv-asme')) $('lv-asme').onclick = () => { J.ce = last.c; J.pa = last.pa || ''; J.n = last.n; J.manual = false; go('avatar'); };
+      if ($('lv-man')) $('lv-man').onclick = () => { J.manual = true; if (J.step === 'centre') { J.ce = ''; J.pa = ''; } J.n = J.n || ''; go('manual'); };
+      if ($('lv-q')) { const I = $('lv-q'); I.oninput = () => { J.q = I.value; const pos = I.selectionStart; draw(); const I2 = $('lv-q'); I2.focus(); I2.setSelectionRange(pos, pos); }; }
+      L.querySelectorAll('.lv-avbtn').forEach((b) => { b.onclick = () => { J.a = J.a === b.dataset.a ? '' : b.dataset.a; draw(); const B2 = L.querySelector('.lv-avbtn[data-a="' + b.dataset.a + '"]'); if (B2) B2.focus(); }; });
+      const F = $('lv-join');
+      if (J.step === 'code') $('lv-code').focus();
+      if (J.step === 'manual') $('lv-name').focus();
+      F.onsubmit = async (ev) => {
+        ev.preventDefault();
+        const E = $('lv-err'); E.hidden = true;
+        const bad = (m) => { E.textContent = m; E.hidden = false; };
+        if (J.step === 'code') { J.code = code6($('lv-code').value); if (J.code.length !== 6) return bad('Type the 6-digit code from the screen.'); return load(); }
+        if (J.step === 'manual') {
+          J.n = $('lv-name').value.replace(/\s+/g, ' ').trim(); if ($('lv-ce')) J.ce = $('lv-ce').value.trim().toUpperCase();
+          if (!J.n) return bad('Type your full name.');
+          return go('avatar');
+        }
+        if (J.step !== 'avatar') return;
+        const B = $('lv-go'); B.disabled = true; B.textContent = 'Joining…';
+        try {
+          const r = await call('liveJoin', [J.code, J.n, J.ce, J.a, J.pa]);
+          P = { code: J.code, pid: r.pid }; saveP(); store.setJson('live-me', { n: J.n, c: J.ce, a: J.a, pa: J.pa });
+          if (location.hash !== '#/join/' + J.code) history.replaceState(null, '', '#/join/' + J.code);
+          afterJoin(r.room);
+        } catch (e) { bad(why(e)); B.disabled = false; B.textContent = 'Join'; }
+      };
+    }
+    if (J.step === 'load') load(); else draw();
   }
 
   /** Which test should be on the screen now (the facilitator picks the slide for each in the Editor). */
@@ -162,15 +218,18 @@
         '<div class="lv-card"><div class="lv-row"><span class="lv-pill ' + (which === 'pre' ? 'dark' : 'lime') + '">' + (which === 'pre' ? 'PRE-TEST' : 'POST-TEST') + '</span>' +
         '<span class="lv-muted">Question ' + (i + 1) + ' of ' + t.qs.length + '</span></div>' +
         '<div class="lv-prog"><i style="width:' + Math.round(100 * (i + 1) / t.qs.length) + '%"></i></div>' +
-        '<h2 class="lv-q">' + esc(q.q) + '</h2><div class="lv-opts" role="radiogroup" aria-label="Answers">' +
-        q.o.map((o, k) => o ? '<button type="button" class="opt" role="radio" data-k="' + 'ABCD'[k] + '" aria-checked="' + (ans[q.id] === 'ABCD'[k]) + '"><b>' + 'ABCD'[k] + '</b><span>' + esc(o) + '</span></button>' : '').join('') +
-        '</div><p class="gerr" id="lv-err" role="alert" hidden></p><div class="tqnav">' +
+        '<h2 class="lv-q">' + esc(q.q) + '</h2>' +
+        (q.e ? '<label class="lv-fld lv-essay"><span>Your answer</span><textarea id="lv-es" rows="5" maxlength="1500" placeholder="Write your answer here">' + esc(ans[q.id] || '') + '</textarea></label>'
+          : '<div class="lv-opts" role="radiogroup" aria-label="Answers">' +
+            q.o.map((o, k) => o ? '<button type="button" class="opt" role="radio" data-k="' + 'ABCD'[k] + '" aria-checked="' + (ans[q.id] === 'ABCD'[k]) + '"><b>' + 'ABCD'[k] + '</b><span>' + esc(o) + '</span></button>' : '').join('') + '</div>') +
+        '<p class="gerr" id="lv-err" role="alert" hidden></p><div class="tqnav">' +
         (i ? '<button type="button" class="btn soft" id="lv-back">← Back</button>' : '<span></span>') +
         '<button type="button" class="btn" id="lv-next"' + (ans[q.id] ? '' : ' disabled') + '>' + (last ? 'Finish' : 'Next') + '</button></div>' +
         (which === 'pre' && i === 0 && !R.on ? '<button type="button" class="lv-link" id="lv-skip">Skip the pre-test</button>' : '') + '</div>' +
         (which === 'pre' ? '<p class="lv-note">This checks what you know now. You\'ll answer the same questions later to see how much you\'ve grown.' +
           (R.on ? ' You\'ll see your score after the post-test.' : '') + ' Scores are only seen by you and L&amp;D.</p>' : '') + '</div>';
       L.querySelectorAll('.opt').forEach((b) => { b.onclick = () => { ans[q.id] = b.dataset.k; draw(); }; });
+      if ($('lv-es')) { const T = $('lv-es'); T.oninput = () => { ans[q.id] = T.value; $('lv-next').disabled = !T.value.trim(); }; }
       if ($('lv-back')) $('lv-back').onclick = () => { i--; draw(); };
       if ($('lv-skip')) $('lv-skip').onclick = () => { store.set('live-skip-' + P.code, '1'); pcall('liveSkip').catch(() => {}); next(); };
       $('lv-next').onclick = async () => {
@@ -193,7 +252,7 @@
   }
   function result(which, r) {
     L.innerHTML = '<div class="lv-phone">' + meBar(which === 'pre' ? 'Pre-test done' : 'Post-test done') + '<div class="lv-card lv-center">' +
-      (which === 'post' && R.me.pre ? '<div class="lv-scores">' + scbox(R.me.pre, 'Pre-test', '') + scbox(r, 'Post-test', 'up') + '</div>' : '<span class="lv-score">' + r.s + '/' + r.t + '</span>') +
+      (which === 'post' && R.me.pre && (R.me.pre.t || r.t) ? '<div class="lv-scores">' + scbox(R.me.pre, 'Pre-test', '') + scbox(r, 'Post-test', 'up') + '</div>' : r.t ? '<span class="lv-score">' + r.s + '/' + r.t + '</span>' : '<span class="lv-score">✓</span>') +
       '<p>' + (which === 'pre' ? 'Thanks! Let\'s see how this changes during the session.' : 'Well done! The session goes on.') + '</p><button type="button" class="btn lv-big" id="lv-go">Back to the session</button></div></div>';
     $('lv-go').onclick = next;
   }

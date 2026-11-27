@@ -357,3 +357,9 @@ h1.big em{font-style:normal;color:var(--brand)}
 .elmock .o,.elmock .in{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}.elmock .in{color:var(--muted)}
 .elmock .sm-btn{align-self:flex-end;height:36px;padding:0 18px;font-size:14px;display:inline-flex;align-items:center;pointer-events:none}
 @media (max-width:860px){.elmain{grid-template-columns:1fr}.elprev{position:static}.elth{width:120px}}
+/* Editor › session report: essays, delete */
+.esrow{border-top:1px solid var(--line);padding:8px 0}
+.escols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.escols small{font-size:12px;color:var(--muted)}.escols p{margin:2px 0 0;font-size:14px;white-space:pre-wrap}
+@media (max-width:600px){.escols{grid-template-columns:1fr}}
+.eddanger{margin-top:12px;border:1.5px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
