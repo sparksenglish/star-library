@@ -9,6 +9,7 @@
   // ---------- slide pictures: small batches, 2 requests at a time, the slide on screen first, 10 ahead ----------
   const IMG = {}, WAIT = {}, BATCH = 6, MAXFLY = 2, AHEAD = 10;
   let queue = [], flying = 0, pt = 0;
+  window.STAR_SLIDE = (k, urgent) => slide(k, urgent);   // the Editor's slide previews use the same loader and cache
   function slide(key, urgent) {
     if (IMG[key]) return Promise.resolve(IMG[key]);
     let w = WAIT[key];
