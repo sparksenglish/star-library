@@ -363,3 +363,10 @@ h1.big em{font-style:normal;color:var(--brand)}
 .escols small{font-size:12px;color:var(--muted)}.escols p{margin:2px 0 0;font-size:14px;white-space:pre-wrap}
 @media (max-width:600px){.escols{grid-template-columns:1fr}}
 .eddanger{margin-top:12px;border:1.5px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+/* Editor › Live session › Add from template */
+.tplbox{border:1.5px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-top:12px;background:var(--soft)}
+.tplbox label.btn{cursor:pointer}
+.tptext{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:14px;padding:10px 14px;font:400 14px/1.5 var(--font);background:var(--card);color:var(--ink);resize:vertical}
+.tpprev{background:var(--card);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
+.tpq{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+.tpq.bad{border-left:4px solid var(--err);padding-left:8px}

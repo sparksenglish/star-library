@@ -506,30 +506,90 @@ window.STAR_MORE = function (X) {
   function qsDraw(t) {
     const id = t.ID, P = LP[id], Q = $('el-qs'); if (!Q) return;
     const live = P.qs.filter((q) => q.Active), ed = live.find((q) => q.ID === EL.q) || {};
+    const dup = !ed.ID && EL.dup ? live.find((q) => q.ID === EL.dup) : null;   // Duplicate: a copy to change, then Add
+    const fv = ed.ID ? ed : dup ? Object.assign({}, dup, { ID: '' }) : {};
     Q.innerHTML = '<div class="edlist">' + (live.length ? live.map((q, i) => '<div class="qcard"><div class="sm muted">' + esc(q.ID) + ' · question ' + (i + 1) + '</div><p style="margin:4px 0"><b>' + esc(q.Question) + '</b></p>' +
         (q.Type === 'essay' ? '<p class="sm muted" style="margin:0 0 8px">Essay · teachers write their own answer (not scored)</p>'
           : '<p class="sm" style="margin:0 0 8px">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join('<br>') + '</p>') +
-        '<div class="edbtns"><button type="button" class="btn soft" data-eq="' + esc(q.ID) + '">Edit</button><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
+        '<div class="edbtns"><button type="button" class="btn soft" data-eq="' + esc(q.ID) + '">Edit</button><button type="button" class="btn soft" data-dup="' + esc(q.ID) + '">Duplicate</button><button type="button" class="btn soft" style="color:var(--err)" data-rm="' + esc(q.ID) + '">Remove</button></div></div>').join('')
         : '<p class="muted">No questions yet. Without questions, live sessions of this training skip the tests.</p>') + '</div>' +
-      '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : 'Add a test question') + '</h2><div class="edform">' +
-      fld('Type', sel('l-Type', ed.Type || '', [['', 'Multiple choice (scored)'], ['essay', 'Essay (teachers write; not scored)']])) +
-      fld('Question', area('l-Question', ed.Question || '', 2)) +
-      '<div id="l-mc" class="edform" style="grid-column:1/-1;padding:0">' + fld('A', inp('l-A', ed.A || '')) + fld('B', inp('l-B', ed.B || '')) + fld('C', inp('l-C', ed.C || ''), 'Optional') + fld('D', inp('l-D', ed.D || ''), 'Optional') +
-      fld('Correct answer', sel('l-Answer', ed.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) + '</div>' +
+      tplBox() +
+      '<h2 class="lbl" id="lt-h">' + (ed.ID ? 'Edit ' + esc(ed.ID) : dup ? 'Add a copy of ' + esc(dup.ID) + ' (change it, then Add)' : 'Add a test question') + '</h2><div class="edform">' +
+      fld('Type', sel('l-Type', fv.Type || '', [['', 'Multiple choice (scored)'], ['essay', 'Essay (teachers write; not scored)']])) +
+      fld('Question', area('l-Question', fv.Question || '', 2)) +
+      '<div id="l-mc" class="edform" style="grid-column:1/-1;padding:0">' + fld('A', inp('l-A', fv.A || '')) + fld('B', inp('l-B', fv.B || '')) + fld('C', inp('l-C', fv.C || ''), 'Optional') + fld('D', inp('l-D', fv.D || ''), 'Optional') +
+      fld('Correct answer', sel('l-Answer', fv.Answer || '', [['', '(pick one)'], 'A', 'B', 'C', 'D'])) + '</div>' +
       '</div><p class="gerr" id="ed-err" role="alert" hidden></p>' +
-      '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID ? '<button type="button" class="btn soft" id="l-cx">Cancel</button>' : '') + '</div>';
-    const after = (r) => { livePageSet(id, r.page); EL.q = ''; X.toast(r.msg); qsDraw(t); };
+      '<div class="edbtns"><button type="button" class="btn" id="l-save">' + (ed.ID ? 'Save question' : 'Add question') + '</button>' + (ed.ID || dup ? '<button type="button" class="btn soft" id="l-cx">Cancel</button>' : '') + '</div>';
+    const after = (r) => { livePageSet(id, r.page); EL.q = ''; EL.dup = ''; X.toast(r.msg); qsDraw(t); };
     $('l-save').onclick = async () => {
       const B = $('l-save'); B.disabled = true;
       const f = { Training: id, ID: ed.ID || '' }; ['Type', 'Question', 'A', 'B', 'C', 'D', 'Answer'].forEach((k) => { f[k] = $('l-' + k).value; });
       try { after(await X.api('edSaveLiveTest', [f])); }
       catch (e) { $('ed-err').textContent = errText(e); $('ed-err').hidden = false; B.disabled = false; }
     };
-    if ($('l-cx')) $('l-cx').onclick = () => { EL.q = ''; qsDraw(t); };
+    if ($('l-cx')) $('l-cx').onclick = () => { EL.q = ''; EL.dup = ''; qsDraw(t); };
+    Q.querySelectorAll('[data-dup]').forEach((b) => { b.onclick = () => { EL.q = ''; EL.dup = b.dataset.dup; qsDraw(t); $('lt-h').scrollIntoView({ block: 'start' }); $('l-Question').focus(); }; });
+    tplWire(t, after);
     const tySync = () => { $('l-mc').hidden = $('l-Type').value === 'essay'; };
     $('l-Type').onchange = tySync; tySync();
-    Q.querySelectorAll('[data-eq]').forEach((b) => { b.onclick = () => { EL.q = b.dataset.eq; qsDraw(t); $('lt-h').scrollIntoView({ block: 'start' }); $('l-Question').focus(); }; });
+    Q.querySelectorAll('[data-eq]').forEach((b) => { b.onclick = () => { EL.q = b.dataset.eq; EL.dup = ''; qsDraw(t); $('lt-h').scrollIntoView({ block: 'start' }); $('l-Question').focus(); }; });
     Q.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { after(await X.api('edHideLiveTest', [b.dataset.rm, id])); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
+  }
+  // ---- Add from template: download the Word template, copy the prompt for Claude, upload the filled file (or paste)
+  function tplBox() {
+    const T = EL.tp, ok = T ? T.qs.filter((q) => !q.err) : [], bad = T ? T.qs.filter((q) => q.err) : [];
+    return '<div class="tplbox"><b>Add from template</b><p class="sm muted" style="margin:0">Add many questions at once: download the template, let Claude fill it (or fill it yourself), then upload it.</p>' +
+      '<div class="edbtns"><a class="btn soft" href="templates/star-test-template.docx" download="STAR test template.docx">1 · Download template</a>' +
+      '<button type="button" class="btn soft" id="tp-copy">2 · Copy prompt for Claude</button>' +
+      '<label class="btn" for="tp-file" tabindex="0" id="tp-flbl">3 · Upload filled file</label><input type="file" id="tp-file" accept=".docx,.txt,.md" hidden></div>' +
+      '<button type="button" class="lv-link" id="tp-pbtn">' + (EL.tpPaste ? 'Hide the paste box' : 'Or paste the questions as text') + '</button>' +
+      (EL.tpPaste ? '<textarea id="tp-text" rows="8" class="tptext" placeholder="1. Question…&#10;A. …&#10;B. …&#10;Answer: B&#10;&#10;2. Essay question…">' + esc(EL.tpText || '') + '</textarea><div class="edbtns"><button type="button" class="btn soft" id="tp-check">Check the text</button></div>' : '') +
+      '<p class="gerr" id="tp-err" role="alert" hidden></p>' +
+      (T ? '<div class="tpprev"><p style="margin:0"><b>' + T.qs.length + ' question' + (T.qs.length === 1 ? '' : 's') + ' found</b>' + (T.src ? ' in ' + esc(T.src) : '') + ': ' +
+        T.qs.filter((q) => !q.Type).length + ' multiple choice, ' + T.qs.filter((q) => q.Type).length + ' essay' + (bad.length ? ' · <span style="color:var(--err)"><b>' + bad.length + ' to fix</b></span>' : '') + '</p>' +
+        T.qs.map((q) => '<div class="tpq' + (q.err ? ' bad' : '') + '"><span class="sm muted">' + q.n + ' · ' + (q.Type ? 'Essay' : 'Multiple choice') + '</span><b>' + esc(q.Question || '(no question text)') + '</b>' +
+          (q.Type ? '' : '<span class="sm">' + ['A', 'B', 'C', 'D'].filter((k) => q[k]).map((k) => (k === q.Answer ? '<b>✓ ' + k + '. ' + esc(q[k]) + '</b>' : k + '. ' + esc(q[k]))).join(' · ') + '</span>') +
+          (q.err ? '<span class="sm" style="color:var(--err)">⚠ ' + esc(q.err) + '</span>' : '') + '</div>').join('') +
+        '<div class="edbtns">' + (bad.length ? '<span class="sm" style="color:var(--err)">Fix the questions marked ⚠ in your file, then upload it again.</span>' : '<button type="button" class="btn" id="tp-add">Add all ' + ok.length + '</button>') +
+        '<button type="button" class="btn soft" id="tp-clear">Clear</button></div></div>' : '') + '</div>';
+  }
+  function tplWire(t, after) {
+    const id = t.ID, err = (m) => { const E = $('tp-err'); E.textContent = m; E.hidden = !m; };
+    const show = (qs, src) => {
+      if (!qs.length) { EL.tp = null; qsDraw(t); return err('No questions found. Check that each question starts with a number, like "1."'); }
+      EL.tp = { qs, src }; qsDraw(t); const B = document.querySelector('.tpprev'); if (B) B.scrollIntoView({ block: 'nearest' });
+    };
+    $('tp-copy').onclick = () => {
+      const txt = window.STAR_TESTS.PROMPT;
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => X.toast('Prompt copied. Paste it in Claude with your questions or slides.'), () => { EL.tpPaste = true; EL.tpText = txt; qsDraw(t); X.toast('Copy the prompt from the box.'); });
+    };
+    $('tp-flbl').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('tp-file').click(); } };
+    $('tp-file').onchange = async () => {
+      const f = $('tp-file').files[0]; if (!f) return;
+      try { show(await window.STAR_TESTS.read(f), f.name); } catch (e) { err(e.message || 'This file could not be read.'); }
+    };
+    $('tp-pbtn').onclick = () => { EL.tpPaste = !EL.tpPaste; qsDraw(t); if (EL.tpPaste) $('tp-text').focus(); };
+    if ($('tp-text')) $('tp-text').oninput = () => { EL.tpText = $('tp-text').value; };
+    if ($('tp-check')) $('tp-check').onclick = () => show(window.STAR_TESTS.parse($('tp-text').value), '');
+    if ($('tp-clear')) $('tp-clear').onclick = () => { EL.tp = null; qsDraw(t); };
+    if ($('tp-add')) $('tp-add').onclick = async () => {
+      const B = $('tp-add'), list = EL.tp.qs.map((q) => ({ Type: q.Type, Question: q.Question, A: q.A, B: q.B, C: q.C, D: q.D, Answer: q.Answer }));
+      B.disabled = true;
+      // small parts, so each request stays under the server's size limit
+      const parts = []; let cur = [];
+      list.forEach((q) => { if (cur.length && JSON.stringify(cur.concat([q])).length > 14000) { parts.push(cur); cur = []; } cur.push(q); });
+      if (cur.length) parts.push(cur);
+      let r = null, n = 0;
+      try {
+        for (let i = 0; i < parts.length; i++) { B.textContent = 'Adding… ' + n + ' of ' + list.length; r = await X.api('edAddLiveTests', [id, parts[i]]); n += r.n; }
+        EL.tp = null; EL.tpText = ''; EL.tpPaste = false; after({ page: r.page, msg: 'Added ' + n + ' questions.' });
+      } catch (e) {
+        if (r) livePageSet(id, r.page);
+        B.disabled = false; B.textContent = 'Add all';
+        err((n ? n + ' added, then: ' : '') + errText(e));
+      }
+    };
   }
   const when = (ms) => ms ? new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
   const pct = (x) => (x == null || isNaN(x) ? '–' : x + '%');
