@@ -175,6 +175,7 @@ window.STAR_MORE = function (X) {
     if (edTab === 'trainings' && id) return edTraining(id);
     if (edTab === 'modules' && id) return edModule(id);
     if (edTab === 'questions') return edQuestions();
+    if (edTab === 'results' && id) { edTab = 'trainings'; return edResults(id); }
     if (edTab === 'livetests' && id) { edTab = 'trainings'; const g = (k) => decodeURIComponent((new RegExp('[?&]' + k + '=([^&]+)').exec(location.hash) || [])[1] || ''); return edLive(id, g('s')); }
     if (edTab === 'sessions') return id ? edSession(id) : edSessions();
     if (edTab === 'modules') return edModules();
@@ -232,6 +233,7 @@ window.STAR_MORE = function (X) {
       (isNew ? '' : (t.Status !== 'Live' && t._ready ? '<button type="button" class="btn line" id="ed-live">Make Live</button>' : '') +
         (t['Source file (L&D only)'] ? '<button type="button" class="btn soft" id="ed-build">Rebuild copy</button>' : '') +
         '<a class="btn soft" href="#/edit/livetests/' + encodeURIComponent(t.ID) + '">Live session</a>' +
+        '<a class="btn soft" href="#/edit/results/' + encodeURIComponent(t.ID) + '">Results</a>' +
         (t.Status !== 'Retired' ? '<button type="button" class="btn soft" id="ed-retire" style="color:var(--err)">Retire</button>' : '')) + '</div></section>';
     X.view(h, 'edit');
     const msg = (ok, text) => { $('ed-ok').hidden = !ok; $('ed-err').hidden = ok; $(ok ? 'ed-ok' : 'ed-err').textContent = text; };
@@ -535,6 +537,40 @@ window.STAR_MORE = function (X) {
     $('l-Type').onchange = tySync; tySync();
     Q.querySelectorAll('[data-eq]').forEach((b) => { b.onclick = () => { EL.q = b.dataset.eq; EL.dup = ''; qsDraw(t); $('lt-h').scrollIntoView({ block: 'start' }); $('l-Question').focus(); }; });
     Q.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => { b.disabled = true; try { after(await X.api('edHideLiveTest', [b.dataset.rm, id])); } catch (e) { X.toast(errText(e)); b.disabled = false; } }; });
+  }
+  // ---- Results of one training, all sessions together (pre → post, % right per question, teachers)
+  let RF = { id: '', c: '', pa: '' };
+  function edResults(id) {
+    if (RF.id !== id) RF = { id: id, c: '', pa: '' };
+    return fresh('pg-er-' + id, 'edResults', [id], resultsDraw, 'edit', 'Results', '#/edit/results/' + encodeURIComponent(id));
+  }
+  function resultsDraw(d) {
+    const pct = (x) => (x && x.t ? Math.round(100 * x.s / x.t) : null), sh = (v) => (v == null ? '–' : v + '%');
+    const centres = Array.from(new Set(d.people.map((p) => p.c).filter(Boolean))).sort(), paths = Array.from(new Set(d.people.map((p) => p.pa).filter(Boolean))).sort();
+    const list = d.people.filter((p) => (!RF.c || p.c === RF.c) && (!RF.pa || p.pa === RF.pa));
+    const avg = (k) => { const xs = list.filter((p) => p[k] && p[k].t); return xs.length ? Math.round(xs.reduce((a, p) => a + pct(p[k]), 0) / xs.length) : null; };
+    const bar = (v, cls) => '<span class="rsbar ' + cls + '"><i style="width:' + (v || 0) + '%"></i><b>' + sh(v) + '</b></span>';
+    const mc = d.qs.filter((q) => !q.e), es = d.qs.filter((q) => q.e);
+    X.view('<section class="sec"><a class="btn soft back" href="#/edit/trainings/' + encodeURIComponent(d.t) + '">← ' + esc(d.t) + '</a>' +
+      '<h1 class="big" style="font-size:28px">Results</h1><p class="sm muted" style="margin:0">' + esc(d.t + ' · ' + d.tt) + '. All live sessions of this training together. The same data is in the sheet: tab <b>Test Answers</b> (one row per answer) and <b>Session People</b>; filter the Training column.</p>' +
+      (d.people.length ? '<div class="rsfil">' + sel('rs-c', RF.c, [['', 'All centres']].concat(centres)) + sel('rs-pa', RF.pa, [['', 'All pathways']].concat(paths)) + '</div>' : '') +
+      '<div class="rsstats"><div class="lv-scbox"><small>Sessions</small><b>' + d.sessions + '</b></div><div class="lv-scbox"><small>Teachers</small><b>' + list.length + '</b></div>' +
+      '<div class="lv-scbox"><small>Pre-test average</small><b>' + sh(avg('pre')) + '</b></div><div class="lv-scbox up"><small>Post-test average</small><b>' + sh(avg('post')) + '</b></div></div>' +
+      '<h2 class="lbl">Questions · % of teachers right</h2>' +
+      (mc.length ? '<p class="sm muted" style="margin:0">All centres and pathways. The lowest bars show what to teach again.</p><div class="edlist">' + mc.map((q) => '<div class="qcard"><div class="sm muted">Question ' + q.no + ' · correct: ' + esc(q.a) + '</div><p style="margin:4px 0 8px"><b>' + esc(q.q) + '</b></p>' +
+        '<div class="rsrow"><span class="sm">Pre</span>' + bar(q.pre && q.pre.pct, 'pre') + '<span class="sm muted">' + (q.pre ? q.pre.n + ' answers' : 'no answers') + '</span></div>' +
+        '<div class="rsrow"><span class="sm">Post</span>' + bar(q.post && q.post.pct, 'post') + '<span class="sm muted">' + (q.post ? q.post.n + ' answers' : 'no answers') + '</span></div>' +
+        (q.pre && q.pre.miss ? '<p class="sm" style="margin:6px 0 0">Most common wrong answer (pre): <b>' + esc(q.pre.miss.a) + '</b> · ' + q.pre.miss.n + '</p>' : '') +
+        (q.post && q.post.miss ? '<p class="sm" style="margin:2px 0 0">Most common wrong answer (post): <b>' + esc(q.post.miss.a) + '</b> · ' + q.post.miss.n + '</p>' : '') + '</div>').join('') + '</div>'
+        : '<p class="muted">No answers per question yet. They are saved from now on, each time a teacher submits a test.</p>') +
+      (es.length ? '<h2 class="lbl">Essay questions</h2><div class="edlist">' + es.map((q) => '<div class="qcard"><div class="sm muted">Question ' + q.no + ' · ' + ((q.pre ? q.pre.n : 0) + (q.post ? q.post.n : 0)) + ' answers</div><p style="margin:4px 0"><b>' + esc(q.q) + '</b></p><p class="sm muted" style="margin:0">Read the answers in each session report, or in the Test Answers tab.</p></div>').join('') + '</div>' : '') +
+      '<h2 class="lbl">Teachers · ' + list.length + '</h2><div class="edlist">' + (list.length ? list.slice().sort((a, b) => a.n.localeCompare(b.n)).map((p) => {
+        const a = pct(p.pre), b = pct(p.post), ch = a != null && b != null ? b - a : null;
+        return '<div class="edrow"><span class="code">' + esc(p.c || '—') + '</span><span><b>' + esc(p.n) + '</b><br><span class="sm muted">' + esc((p.pa ? p.pa + ' · ' : '') + when(p.j) + ' · session ' + p.code) + '</span></span>' +
+          '<span class="sm" style="text-align:right">' + sh(a) + ' → <b>' + sh(b) + '</b>' + (ch != null ? '<br><span style="color:' + (ch >= 0 ? 'var(--brand)' : 'var(--err)') + '">' + (ch >= 0 ? '+' : '') + ch + '</span>' : '') + '</span></div>';
+      }).join('') : '<p class="muted">No teachers yet.</p>') + '</div></section>', 'edit');
+    if ($('rs-c')) $('rs-c').onchange = () => { RF.c = $('rs-c').value; resultsDraw(d); };
+    if ($('rs-pa')) $('rs-pa').onchange = () => { RF.pa = $('rs-pa').value; resultsDraw(d); };
   }
   // ---- Add from template: download the Word template, copy the prompt for Claude, upload the filled file (or paste)
   function tplBox() {
